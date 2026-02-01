@@ -1,0 +1,30 @@
+export default {
+  async fetch(request, env) {
+    if (request.method !== "POST") {
+      return new Response("Method Not Allowed", { status: 405 });
+    }
+
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return new Response("Bad JSON", { status: 400 });
+    }
+
+    const targetUrl = body.target_url;
+    const payload = body.payload;
+
+    if (!targetUrl || !payload) {
+      return new Response("Missing target_url or payload", { status: 400 });
+    }
+
+    const resp = await fetch(targetUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const text = await resp.text();
+    return new Response(text, { status: resp.status });
+  }
+};
