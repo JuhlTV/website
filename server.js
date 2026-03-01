@@ -3,7 +3,7 @@
 
 require('dotenv').config();
 const express = require('express');
-const { Client, GatewayIntentBits, ChannelType } = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
 const cors = require('cors');
 const path = require('path');
 
@@ -15,6 +15,7 @@ const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${process.env.POR
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID;
 const DISCORD_TARGET_USER_ID = process.env.DISCORD_TARGET_USER_ID;
 const DISCORD_OWNER_USER_ID = process.env.DISCORD_OWNER_USER_ID;
+const DISCORD_CHANNEL_ID = process.env.DISCORD_CHANNEL_ID;
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -38,8 +39,82 @@ const client = new Client({
 
 let botReady = false;
 
+function normalizeInput(value) {
+    return String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function safeField(value, maxLength = 1000) {
+    const normalized = normalizeInput(value);
+    if (!normalized) {
+        return 'Nicht angegeben';
+    }
+    if (normalized.length <= maxLength) {
+        return normalized;
+    }
+    return `${normalized.slice(0, maxLength - 3)}...`;
+}
+
+function buildMessageId() {
+    const randomSuffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+    return `MSG-${Date.now()}-${randomSuffix}`;
+}
+
+function buildContactEmbed({ name, email, subject, message, messageId, timestamp, ownerCopy = false }) {
+    return {
+        color: ownerCopy ? 0x003366 : 0xd4af37,
+        title: ownerCopy
+            ? '📨 Owner Copy - Sheriff Website Nachricht'
+            : '📨 Sheriff Manfred Mainke - Website Nachricht',
+        description: ownerCopy
+            ? 'Zusätzliche Owner-Kopie einer neuen Kontaktanfrage.'
+            : 'Neue Kontaktanfrage über das Sheriff Department Website-Formular.',
+        fields: [
+            {
+                name: '🆔 Vorgangsnummer',
+                value: `\`${messageId}\``,
+                inline: false
+            },
+            {
+                name: '👤 Name',
+                value: safeField(name, 256),
+                inline: true
+            },
+            {
+                name: '📧 E-Mail',
+                value: safeField(email, 256),
+                inline: true
+            },
+            {
+                name: '📝 Betreff',
+                value: safeField(subject, 1024),
+                inline: false
+            },
+            {
+                name: '💬 Nachricht',
+                value: safeField(message, 1024),
+                inline: false
+            },
+            {
+                name: '🌐 Quelle',
+                value: PUBLIC_URL,
+                inline: false
+            }
+        ],
+        footer: {
+            text: ownerCopy ? 'Sheriff Department Contact System • Owner Copy' : 'Sheriff Department Contact System'
+        },
+        timestamp
+    };
+}
+
+function buildDMText({ messageId }) {
+    return `🚔 Neue Website-Kontaktanfrage eingegangen\nVorgangsnummer: ${messageId}`;
+}
+
 // Discord Bot Event - Ready
-client.on('ready', () => {
+client.once('clientReady', () => {
     console.log(`✓ Discord Bot logged in as ${client.user.tag}`);
     console.log(`✓ Bot is ready to send DMs!`);
     botReady = true;
@@ -90,7 +165,10 @@ app.get('/auth/callback', (req, res) => {
 
 // Express Route - Handle form submissions
 app.post('/api/contact', async (req, res) => {
-    const { name, email, subject, message } = req.body;
+    const name = normalizeInput(req.body?.name);
+    const email = normalizeInput(req.body?.email);
+    const subject = normalizeInput(req.body?.subject);
+    const message = normalizeInput(req.body?.message);
 
     // Validation
     if (!name || !email || !subject || !message) {
@@ -129,93 +207,37 @@ app.post('/api/contact', async (req, res) => {
         const guild = await client.guilds.fetch(DISCORD_GUILD_ID);
         const member = await guild.members.fetch(DISCORD_TARGET_USER_ID);
         const targetUser = member.user;
-        
-        // Format message
-        const discordMessage = `
-🚔 **NEUE NACHRICHT FÜR SHERIFF MANFRED MAINKE** 🚔
 
-**Name:** ${name}
-**E-Mail:** ${email}
-
-**Betreff:** ${subject}
-
-**Nachricht:**
-${message}
-
----
-⏰ Zeitstempel: ${new Date().toLocaleString('de-DE')}
-        `.trim();
+        const timestamp = new Date();
+        const messageId = buildMessageId();
 
         // Send DM
         await targetUser.send({
-            content: discordMessage,
-            embeds: [{
-                color: 0xd4af37, // Gold color
-                title: '📨 Sheriff Manfred Mainke - Website Nachricht',
-                description: 'Eine neue Nachricht vom Sheriff Department Website Kontaktformular',
-                fields: [
-                    {
-                        name: '👤 Name',
-                        value: name,
-                        inline: true
-                    },
-                    {
-                        name: '📧 E-Mail',
-                        value: email,
-                        inline: true
-                    },
-                    {
-                        name: '📝 Betreff',
-                        value: subject,
-                        inline: false
-                    },
-                    {
-                        name: '💬 Nachricht',
-                        value: message,
-                        inline: false
-                    }
-                ],
-                footer: {
-                    text: 'Sheriff Department Contact System',
-                    icon_url: 'https://raw.githubusercontent.com/discord/discord-api-docs/main/assets/png/icon.png'
-                },
-                timestamp: new Date()
-            }]
+            content: buildDMText({ messageId }),
+            embeds: [buildContactEmbed({
+                name,
+                email,
+                subject,
+                message,
+                messageId,
+                timestamp
+            })]
         });
 
         if (DISCORD_OWNER_USER_ID && DISCORD_OWNER_USER_ID !== DISCORD_TARGET_USER_ID) {
             try {
                 const ownerMember = await guild.members.fetch(DISCORD_OWNER_USER_ID);
                 await ownerMember.user.send({
-                    content: `📌 Kopie für Owner-Account\n\n${discordMessage}`,
-                    embeds: [{
-                        color: 0x003366,
-                        title: '📨 Owner Copy - Sheriff Website Nachricht',
-                        description: 'Diese Nachricht ist eine zusätzliche Owner-Kopie.',
-                        fields: [
-                            {
-                                name: '👤 Name',
-                                value: name,
-                                inline: true
-                            },
-                            {
-                                name: '📧 E-Mail',
-                                value: email,
-                                inline: true
-                            },
-                            {
-                                name: '📝 Betreff',
-                                value: subject,
-                                inline: false
-                            },
-                            {
-                                name: '💬 Nachricht',
-                                value: message,
-                                inline: false
-                            }
-                        ],
-                        timestamp: new Date()
-                    }]
+                    content: buildDMText({ messageId }),
+                    embeds: [buildContactEmbed({
+                        name,
+                        email,
+                        subject,
+                        message,
+                        messageId,
+                        timestamp,
+                        ownerCopy: true
+                    })]
                 });
                 console.log('✓ Owner-Kopie wurde per DM gesendet');
             } catch (ownerError) {
@@ -223,11 +245,35 @@ ${message}
             }
         }
 
-        console.log(`✓ Nachricht von ${name} wurde an Discord DM gesendet`);
+        // Send message to Discord channel if configured
+        if (DISCORD_CHANNEL_ID) {
+            try {
+                const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);
+                if (channel && channel.isTextBased()) {
+                    await channel.send({
+                        content: `📢 Neue Kontaktanfrage eingegangen • ID: \`${messageId}\``,
+                        embeds: [buildContactEmbed({
+                            name,
+                            email,
+                            subject,
+                            message,
+                            messageId,
+                            timestamp
+                        })]
+                    });
+                    console.log(`✓ Nachricht in Channel ${DISCORD_CHANNEL_ID} gepostet`);
+                }
+            } catch (channelError) {
+                console.warn('⚠️ Channel-Nachricht konnte nicht gesendet werden:', channelError?.code || channelError?.message || channelError);
+            }
+        }
+
+        console.log(`✓ Nachricht ${messageId} von ${name} wurde an Discord DM gesendet`);
 
         return res.status(200).json({
             success: true,
-            message: 'Vielen Dank! Ihre Nachricht wurde erfolgreich übermittelt.'
+            message: 'Vielen Dank! Ihre Nachricht wurde erfolgreich übermittelt.',
+            messageId
         });
 
     } catch (error) {
@@ -291,6 +337,7 @@ const server = app.listen(PORT, () => {
     console.log(`✓ Guild ID: ${DISCORD_GUILD_ID || '⏳ Nicht konfiguriert'}`);
     console.log(`✓ Target User: ${DISCORD_TARGET_USER_ID || '⏳ Nicht konfiguriert'}`);
     console.log(`✓ Owner User: ${DISCORD_OWNER_USER_ID || '⏳ Nicht konfiguriert'}`);
+    console.log(`✓ Log Channel: ${DISCORD_CHANNEL_ID || '⏳ Nicht konfiguriert'}`);
     console.log(`✓ Warte auf Discord Bot Verbindung...`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 });
