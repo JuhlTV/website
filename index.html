@@ -34,8 +34,12 @@
                 </svg>
             </div>
             <div class="header-text">
-                <h1>SHERIFF'S DEPARTMENT</h1>
+                <div class="department-name">
+                    <div class="name-line">SHERIFF'S DEPARTMENT</div>
+                    <div class="county-line">COUNTY LAW ENFORCEMENT</div>
+                </div>
                 <p class="header-subtitle">Sheriff Manfred Mainke</p>
+                <div class="badge-number">BADGE #001</div>
                 <p class="header-motto">"Serving with Honor, Protecting with Pride"</p>
             </div>
             <div class="emergency-contact">
@@ -60,9 +64,30 @@
     <section class="hero" id="home">
         <div class="hero-overlay">
             <div class="hero-content">
+                <div class="hero-seal">
+                    <svg viewBox="0 0 120 120" class="department-seal">
+                        <defs>
+                            <radialGradient id="sealGradient" cx="50%" cy="50%" r="50%">
+                                <stop offset="0%" style="stop-color:#f4c542;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#d4af37;stop-opacity:1" />
+                            </radialGradient>
+                        </defs>
+                        <circle cx="60" cy="60" r="58" fill="none" stroke="url(#sealGradient)" stroke-width="3"/>
+                        <circle cx="60" cy="60" r="50" fill="none" stroke="url(#sealGradient)" stroke-width="1.5"/>
+                        <polygon points="60,20 72,45 100,45 77,60 85,85 60,70 35,85 43,60 20,45 48,45" 
+                                 fill="url(#sealGradient)" stroke="#8b7500" stroke-width="2"/>
+                        <text x="60" y="105" font-size="10" font-weight="bold" text-anchor="middle" fill="#d4af37"
+                              style="font-family: 'Crimson Text', serif; letter-spacing: 1px;">SHERIFF</text>
+                    </svg>
+                </div>
                 <h2>Willkommen beim Sheriff's Department</h2>
-                <p>Keeping Our Community Safe Since Day One</p>
-                <a href="#contact" class="cta-button">CONTACT US</a>
+                <div class="hero-divider"></div>
+                <p class="hero-motto">TO SERVE • TO PROTECT • TO HONOR</p>
+                <p class="hero-subtitle">Keeping Our Community Safe Since Day One</p>
+                <div class="hero-buttons">
+                    <a href="#contact" class="cta-button cta-primary">REPORT AN INCIDENT</a>
+                    <a href="#services" class="cta-button cta-secondary">OUR SERVICES</a>
+                </div>
             </div>
         </div>
     </section>
@@ -106,7 +131,11 @@
                 </div>
                 <div class="sheriff-info">
                     <h3>Sheriff Manfred Mainke</h3>
-                    <p class="sheriff-title">County Sheriff</p>
+                    <p class="sheriff-title">County Sheriff • Chief Law Enforcement Officer</p>
+                    <div class="sheriff-credentials">
+                        <span class="credential-badge">PEACE OFFICER</span>
+                        <span class="credential-badge">CERTIFIED LEO</span>
+                    </div>
                     <div class="sheriff-bio">
                         <p>Sheriff Manfred Mainke steht seit über 20 Jahren im Dienst der Öffentlichkeit. Mit unerschütterlicher Hingabe und einem tiefen Engagement für Gerechtigkeit führt er das Sheriff's Department mit Integrität und Professionalität.</p>
                         <p>Unter seiner Führung hat sich das Department zu einer der angesehensten Strafverfolgungsbehörden entwickelt, bekannt für ihre Bürgernähe und ihr Engagement für die Sicherheit der Gemeinde.</p>
