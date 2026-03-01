@@ -330,6 +330,73 @@ if (sheriffSection) {
 }
 
 // Console Easter Egg
-console.log('%c👮 Sheriff Manfred Mainke\'s Department', 'font-size: 20px; font-weight: bold; color: #1a3a52;');
-console.log('%c🌟 Serving with Honor, Protecting with Pride', 'font-size: 14px; color: #c9a961;');
+console.log('%c👮 Sheriff Manfred Mainke\'s Department', 'font-size: 20px; font-weight: bold; color: #003366;');
+console.log('%c🌟 Serving with Honor, Protecting with Pride', 'font-size: 14px; color: #d4af37;');
 console.log('%cFür Notfälle: 911', 'font-size: 12px; color: #8b0000; font-weight: bold;');
+
+// Scroll to Top Button Functionality
+const scrollToTopBtn = document.getElementById('scrollToTop');
+
+window.addEventListener('scroll', () => {
+    if (window.scrollY > 300) {
+        scrollToTopBtn.classList.add('visible');
+    } else {
+        scrollToTopBtn.classList.remove('visible');
+    }
+});
+
+scrollToTopBtn.addEventListener('click', () => {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+});
+
+// Add entrance animations to elements
+document.addEventListener('DOMContentLoaded', () => {
+    // Animate header on load
+    const header = document.querySelector('.main-header');
+    if (header) {
+        header.style.opacity = '0';
+        header.style.transform = 'translateY(-20px)';
+        setTimeout(() => {
+            header.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            header.style.opacity = '1';
+            header.style.transform = 'translateY(0)';
+        }, 100);
+    }
+});
+
+// Enhanced keyboard navigation
+document.addEventListener('keydown', (e) => {
+    // Press 'Home' to scroll to top
+    if (e.key === 'Home' && e.ctrlKey) {
+        e.preventDefault();
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    }
+    
+    // Press 'End' to scroll to bottom
+    if (e.key === 'End' && e.ctrlKey) {
+        e.preventDefault();
+        window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: 'smooth'
+        });
+    }
+});
+
+// Add focus styles for accessibility
+document.querySelectorAll('a, button, input, textarea').forEach(element => {
+    element.addEventListener('focus', function() {
+        this.style.outline = '3px solid #d4af37';
+        this.style.outlineOffset = '2px';
+    });
+    
+    element.addEventListener('blur', function() {
+        this.style.outline = '';
+        this.style.outlineOffset = '';
+    });
+});

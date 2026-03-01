@@ -15,8 +15,22 @@
         <div class="header-content">
             <div class="badge-container">
                 <svg class="texas-star" viewBox="0 0 100 100" width="80" height="80">
-                    <polygon points="50,10 61,35 88,35 66,52 74,77 50,62 26,77 34,52 12,35 39,35" fill="#c9a961" stroke="#8b7355" stroke-width="2"/>
-                    <text x="50" y="55" font-size="24" font-weight="bold" text-anchor="middle" fill="#1a3a52">SM</text>
+                    <defs>
+                        <radialGradient id="starGradient" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" style="stop-color:#f4c542;stop-opacity:1" />
+                            <stop offset="50%" style="stop-color:#d4af37;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#b5a642;stop-opacity:1" />
+                        </radialGradient>
+                        <radialGradient id="centerGradient" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" style="stop-color:#003366;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#001f3f;stop-opacity:1" />
+                        </radialGradient>
+                    </defs>
+                    <polygon points="50,10 61,35 88,35 66,52 74,77 50,62 26,77 34,52 12,35 39,35" 
+                             fill="url(#starGradient)" stroke="#8b7500" stroke-width="2.5"/>
+                    <circle cx="50" cy="50" r="18" fill="url(#centerGradient)" stroke="#d4af37" stroke-width="2"/>
+                    <text x="50" y="55" font-size="20" font-weight="bold" text-anchor="middle" fill="#d4af37" 
+                          style="font-family: 'Crimson Text', serif; letter-spacing: 1px;">SM</text>
                 </svg>
             </div>
             <div class="header-text">
@@ -70,12 +84,24 @@
             </div>
             <div class="sheriff-profile">
                 <div class="sheriff-image">
-                    <div class="sheriff-placeholder">
-                        <svg viewBox="0 0 200 200" width="250" height="250">
-                            <circle cx="100" cy="100" r="95" fill="#1a3a52" stroke="#c9a961" stroke-width="5"/>
-                            <polygon points="100,40 115,75 155,75 123,97 135,132 100,110 65,132 77,97 45,75 85,75" fill="#c9a961"/>
-                            <text x="100" y="170" font-size="18" font-weight="bold" text-anchor="middle" fill="#c9a961">SHERIFF</text>
-                        </svg>
+                    <div class="sheriff-photo-frame">
+                        <img src="Screenshot_2026-02-18_213336.png" alt="Sheriff Manfred Mainke" class="sheriff-photo">
+                        <div class="photo-badge-overlay">
+                            <svg viewBox="0 0 80 80" width="80" height="80" class="mini-badge">
+                                <defs>
+                                    <radialGradient id="miniStarGradient" cx="50%" cy="50%" r="50%">
+                                        <stop offset="0%" style="stop-color:#f4c542;stop-opacity:1" />
+                                        <stop offset="60%" style="stop-color:#d4af37;stop-opacity:1" />
+                                        <stop offset="100%" style="stop-color:#b5a642;stop-opacity:1" />
+                                    </radialGradient>
+                                </defs>
+                                <polygon points="40,10 48,28 67,28 52,39 57,57 40,46 23,57 28,39 13,28 32,28" 
+                                         fill="url(#miniStarGradient)" stroke="#8b7500" stroke-width="2"/>
+                                <circle cx="40" cy="37" r="10" fill="#003366" stroke="#d4af37" stroke-width="1.5"/>
+                                <text x="40" y="42" font-size="8" font-weight="bold" text-anchor="middle" fill="#d4af37" 
+                                      style="font-family: 'Crimson Text', serif; letter-spacing: 0.5px;">SM</text>
+                            </svg>
+                        </div>
                     </div>
                 </div>
                 <div class="sheriff-info">
@@ -252,6 +278,11 @@
             </div>
         </div>
     </footer>
+
+    <!-- Scroll to Top Button -->
+    <button class="scroll-to-top" id="scrollToTop" aria-label="Scroll to top">
+        ▲
+    </button>
 
     <script src="script.js"></script>
 </body>
