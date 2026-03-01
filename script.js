@@ -55,24 +55,70 @@ window.addEventListener('scroll', () => {
     });
 });
 
-// Contact Form Handler
+// Contact Form Handler - with Discord Bot Integration
 const contactForm = document.getElementById('contactForm');
 if (contactForm) {
-    contactForm.addEventListener('submit', function(e) {
+    contactForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         // Get form data
-        const formData = new FormData(contactForm);
         const name = contactForm.querySelector('input[type="text"]').value;
+        const email = contactForm.querySelectorAll('input[type="email"]')[0].value;
+        const subject = contactForm.querySelectorAll('input[type="text"]')[1].value;
+        const message = contactForm.querySelector('textarea').value;
         
-        // Show success message
-        showNotification(
-            `Vielen Dank, ${name}! Ihre Nachricht wurde empfangen. Das Sheriff's Department wird sich in Kürze bei Ihnen melden.`,
-            'success'
-        );
+        // Disable button during submission
+        const submitBtn = contactForm.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'WIRD ÜBERMITTELT...';
         
-        // Reset form
-        contactForm.reset();
+        try {
+            // Send to backend API
+            const response = await fetch('/api/contact', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: name,
+                    email: email,
+                    subject: subject,
+                    message: message
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.success) {
+                // Show success message
+                showNotification(
+                    `✓ Vielen Dank, ${name}! Ihre Nachricht wurde an Sheriff Mainke übermittelt. Er wird sich baldmöglichst mit Ihnen in Verbindung setzen.`,
+                    'success'
+                );
+                
+                // Reset form
+                contactForm.reset();
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            } else {
+                // Show error message
+                showNotification(
+                    `❌ Fehler: ${result.message}`,
+                    'error'
+                );
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        } catch (error) {
+            console.error('Contact Form Error:', error);
+            showNotification(
+                '❌ Es gab einen Fehler beim Übermitteln Ihrer Nachricht. Bitte versuchen Sie es später erneut.',
+                'error'
+            );
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        }
     });
 }
 
@@ -87,9 +133,12 @@ function showNotification(message, type = 'info') {
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
+    let icon = 'ℹ';
+    if (type === 'success') icon = '✓';
+    if (type === 'error') icon = '✕';
     notification.innerHTML = `
         <div class="notification-content">
-            <span class="notification-icon">${type === 'success' ? '✓' : 'ℹ'}</span>
+            <span class="notification-icon">${icon}</span>
             <span class="notification-message">${message}</span>
             <button class="notification-close">&times;</button>
         </div>
@@ -102,7 +151,7 @@ function showNotification(message, type = 'info') {
             position: fixed;
             top: 20px;
             right: 20px;
-            background-color: #1a3a52;
+            background-color: #003366;
             color: white;
             padding: 20px;
             border-radius: 8px;
@@ -110,11 +159,17 @@ function showNotification(message, type = 'info') {
             z-index: 10000;
             animation: slideIn 0.3s ease-out;
             max-width: 400px;
+            border-left: 5px solid #d4af37;
         }
         
         .notification-success {
             background-color: #2d7a2d;
-            border-left: 5px solid #c9a961;
+            border-left: 5px solid #d4af37;
+        }
+        
+        .notification-error {
+            background-color: #8b0000;
+            border-left: 5px solid #ff6b6b;
         }
         
         .notification-content {
