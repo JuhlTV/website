@@ -113,20 +113,42 @@ function buildDMText({ messageId }) {
     return `🚔 Neue Website-Kontaktanfrage eingegangen\nVorgangsnummer: ${messageId}`;
 }
 
+// Discord Bot Status Rotation
+const botStatusRotation = [
+    { name: 'Sheriff Manfred Mainke', type: 'WATCHING' },
+    { name: 'Community Protection', type: 'WATCHING' },
+    { name: '911 Dispatcher Calls', type: 'LISTENING' },
+    { name: 'Law Enforcement Duties', type: 'PLAYING' },
+    { name: 'Website Contact Forms', type: 'MONITORING' },
+    { name: 'County Safety', type: 'WATCHING' }
+];
+
+let currentStatusIndex = 0;
+
+function rotateStatus() {
+    const status = botStatusRotation[currentStatusIndex];
+    client.user.setPresence({
+        activities: [{
+            name: status.name,
+            type: status.type
+        }],
+        status: 'online'
+    });
+    currentStatusIndex = (currentStatusIndex + 1) % botStatusRotation.length;
+}
+
 // Discord Bot Event - Ready
 client.once('clientReady', () => {
     console.log(`✓ Discord Bot logged in as ${client.user.tag}`);
     console.log(`✓ Bot is ready to send DMs!`);
+    console.log(`🤖 Sheriff M. Mainke Status aktiviert`);
     botReady = true;
     
-    // Set bot status
-    client.user.setPresence({
-        activities: [{
-            name: 'Sheriff Department Website',
-            type: 'WATCHING'
-        }],
-        status: 'online'
-    });
+    // Set initial status
+    rotateStatus();
+    
+    // Rotate status every 30 seconds
+    setInterval(rotateStatus, 30000);
 });
 
 // Discord Bot Event - Error handling
