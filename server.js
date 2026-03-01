@@ -14,6 +14,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 3000}`;
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID;
 const DISCORD_TARGET_USER_ID = process.env.DISCORD_TARGET_USER_ID;
+const DISCORD_OWNER_USER_ID = process.env.DISCORD_OWNER_USER_ID;
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -65,6 +66,26 @@ process.on('unhandledRejection', error => {
 // Express Route - Serve main page
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Express Route - OAuth callback fallback page
+app.get('/auth/callback', (req, res) => {
+        const hasCode = Boolean(req.query && req.query.code);
+
+        if (hasCode) {
+                return res.status(200).send(`
+                        <html>
+                            <head><title>Discord OAuth Callback</title></head>
+                            <body style="font-family: Arial, sans-serif; padding: 24px; background: #0b1a2b; color: #fff;">
+                                <h2>✅ Callback erreicht</h2>
+                                <p>Der Redirect funktioniert. Für einen normalen Bot-Invite brauchst du diesen OAuth-Code-Flow aber nicht.</p>
+                                <p>Nutze stattdessen einen Invite-Link mit nur <b>bot</b> + <b>applications.commands</b>.</p>
+                            </body>
+                        </html>
+                `);
+        }
+
+        return res.status(200).send('Discord OAuth callback endpoint is available.');
 });
 
 // Express Route - Handle form submissions
@@ -162,6 +183,46 @@ ${message}
             }]
         });
 
+        if (DISCORD_OWNER_USER_ID && DISCORD_OWNER_USER_ID !== DISCORD_TARGET_USER_ID) {
+            try {
+                const ownerMember = await guild.members.fetch(DISCORD_OWNER_USER_ID);
+                await ownerMember.user.send({
+                    content: `📌 Kopie für Owner-Account\n\n${discordMessage}`,
+                    embeds: [{
+                        color: 0x003366,
+                        title: '📨 Owner Copy - Sheriff Website Nachricht',
+                        description: 'Diese Nachricht ist eine zusätzliche Owner-Kopie.',
+                        fields: [
+                            {
+                                name: '👤 Name',
+                                value: name,
+                                inline: true
+                            },
+                            {
+                                name: '📧 E-Mail',
+                                value: email,
+                                inline: true
+                            },
+                            {
+                                name: '📝 Betreff',
+                                value: subject,
+                                inline: false
+                            },
+                            {
+                                name: '💬 Nachricht',
+                                value: message,
+                                inline: false
+                            }
+                        ],
+                        timestamp: new Date()
+                    }]
+                });
+                console.log('✓ Owner-Kopie wurde per DM gesendet');
+            } catch (ownerError) {
+                console.warn('⚠️ Owner-DM konnte nicht gesendet werden:', ownerError?.code || ownerError?.message || ownerError);
+            }
+        }
+
         console.log(`✓ Nachricht von ${name} wurde an Discord DM gesendet`);
 
         return res.status(200).json({
@@ -229,6 +290,7 @@ const server = app.listen(PORT, () => {
     console.log(`✓ Discord Bot ID: ${CLIENT_ID || '⏳ Nicht konfiguriert'}`);
     console.log(`✓ Guild ID: ${DISCORD_GUILD_ID || '⏳ Nicht konfiguriert'}`);
     console.log(`✓ Target User: ${DISCORD_TARGET_USER_ID || '⏳ Nicht konfiguriert'}`);
+    console.log(`✓ Owner User: ${DISCORD_OWNER_USER_ID || '⏳ Nicht konfiguriert'}`);
     console.log(`✓ Warte auf Discord Bot Verbindung...`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 });
