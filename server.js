@@ -12,6 +12,7 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 3000}`;
+const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID;
 const DISCORD_TARGET_USER_ID = process.env.DISCORD_TARGET_USER_ID;
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
@@ -95,16 +96,25 @@ app.post('/api/contact', async (req, res) => {
             });
         }
 
-        // Get user and send DM
-        const targetUser = await client.users.fetch(DISCORD_TARGET_USER_ID);
+        if (!DISCORD_GUILD_ID) {
+            console.error('❌ DISCORD_GUILD_ID nicht in .env gesetzt!');
+            return res.status(500).json({
+                success: false,
+                message: 'Bot-Konfiguration unvollständig (Guild fehlt)'
+            });
+        }
+
+        // Stelle sicher, dass User und Bot denselben Server teilen
+        const guild = await client.guilds.fetch(DISCORD_GUILD_ID);
+        const member = await guild.members.fetch(DISCORD_TARGET_USER_ID);
+        const targetUser = member.user;
         
         // Format message
         const discordMessage = `
-🚔 **NEUE NACHRICHT VOM WEBSITE KONTAKTFORMULAR** 🚔
+🚔 **NEUE NACHRICHT FÜR SHERIFF MANFRED MAINKE** 🚔
 
 **Name:** ${name}
 **E-Mail:** ${email}
-**Telefon:** (Falls angegeben)
 
 **Betreff:** ${subject}
 
@@ -120,7 +130,8 @@ ${message}
             content: discordMessage,
             embeds: [{
                 color: 0xd4af37, // Gold color
-                title: '📨 Sheriff Department - Website Nachricht',
+                title: '📨 Sheriff Manfred Mainke - Website Nachricht',
+                description: 'Eine neue Nachricht vom Sheriff Department Website Kontaktformular',
                 fields: [
                     {
                         name: '👤 Name',
@@ -160,6 +171,28 @@ ${message}
 
     } catch (error) {
         console.error('Fehler beim Senden der Discord DM:', error);
+
+        if (error && (error.code === 50007 || error.code === '50007')) {
+            return res.status(500).json({
+                success: false,
+                message: 'Discord blockiert DMs an diesen User (Privacy-Einstellung). Aktiviere "Direktnachrichten von Servermitgliedern zulassen" für den gemeinsamen Server.'
+            });
+        }
+
+        if (error && (error.code === 10013 || error.code === '10013')) {
+            return res.status(500).json({
+                success: false,
+                message: 'DISCORD_TARGET_USER_ID ist ungültig oder der User wurde nicht gefunden.'
+            });
+        }
+
+        if (error && (error.code === 10004 || error.code === '10004')) {
+            return res.status(500).json({
+                success: false,
+                message: 'DISCORD_GUILD_ID ist ungültig oder der Bot ist nicht auf dem Server.'
+            });
+        }
+
         return res.status(500).json({
             success: false,
             message: 'Es gab einen Fehler beim Übermitteln Ihrer Nachricht. Bitte versuchen Sie es später erneut.'
@@ -194,6 +227,7 @@ const server = app.listen(PORT, () => {
     console.log(`✓ Public URL: ${PUBLIC_URL}`);
     console.log(`✓ Environment: ${NODE_ENV}`);
     console.log(`✓ Discord Bot ID: ${CLIENT_ID || '⏳ Nicht konfiguriert'}`);
+    console.log(`✓ Guild ID: ${DISCORD_GUILD_ID || '⏳ Nicht konfiguriert'}`);
     console.log(`✓ Target User: ${DISCORD_TARGET_USER_ID || '⏳ Nicht konfiguriert'}`);
     console.log(`✓ Warte auf Discord Bot Verbindung...`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
