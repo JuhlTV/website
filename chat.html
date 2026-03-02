@@ -232,30 +232,60 @@
 
     <script>
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${protocol}//${window.location.host}`);
-
+        
         const messagesArea = document.getElementById('messagesArea');
         const messageInput = document.getElementById('messageInput');
         const usernameInput = document.getElementById('usernameInput');
+        const sendButton = document.querySelector('button');
+        
+        let ws = null;
+        let isConnected = false;
+        let sendCooldown = false;
+        const SEND_COOLDOWN_MS = 500; // Prevent spam
 
-        ws.onopen = () => {
-            console.log('WebSocket verbunden');
-        };
-
-        ws.onmessage = (event) => {
+        function connectWebSocket() {
             try {
-                const data = JSON.parse(event.data);
+                ws = new WebSocket(`${protocol}//${window.location.host}`);
 
-                if (data.type === 'history') {
-                    messagesArea.innerHTML = '';
-                    data.messages.forEach(msg => displayMessage(msg));
-                } else if (data.type === 'new_message') {
-                    displayMessage(data.message);
-                }
+                ws.onopen = () => {
+                    isConnected = true;
+                    sendButton.disabled = false;
+                    console.log('✅ WebSocket verbunden');
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+
+                        if (data.type === 'history') {
+                            messagesArea.innerHTML = '';
+                            data.messages.forEach(msg => displayMessage(msg));
+                        } else if (data.type === 'new_message') {
+                            displayMessage(data.message);
+                        }
+                    } catch (error) {
+                        console.error('❌ Fehler beim Verarbeiten der Nachricht:', error);
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    console.error('❌ WebSocket Fehler:', error);
+                    isConnected = false;
+                    sendButton.disabled = true;
+                };
+                
+                ws.onclose = () => {
+                    isConnected = false;
+                    sendButton.disabled = true;
+                    console.log('⚠️ WebSocket Verbindung getrennt - versuche Reconnect in 3s...');
+                    setTimeout(connectWebSocket, 3000);
+                };
             } catch (error) {
-                console.error('Fehler beim Verarbeiten der Nachricht:', error);
+                console.error('❌ WebSocket Fehler beim Verbindungsaufbau:', error);
+                sendButton.disabled = true;
+                setTimeout(connectWebSocket, 3000);
             }
-        };
+        }
 
         function displayMessage(msg) {
             const messageEl = document.createElement('div');
@@ -268,34 +298,77 @@
                 <div class="message-text">${escapeHtml(msg.message)}</div>
                 <div class="message-time">${msg.timestamp}</div>
             `;
+            messageEl.style.animation = 'slideUp 0.3s ease-out';
             messagesArea.appendChild(messageEl);
-            messagesArea.scrollTop = messagesArea.scrollHeight;
+            
+            // Smooth scroll with requestAnimationFrame
+            requestAnimationFrame(() => {
+                messagesArea.scrollTop = messagesArea.scrollHeight;
+            });
         }
 
         function sendMessage() {
+            if (!isConnected || sendCooldown) {
+                return;
+            }
+
             const username = usernameInput.value.trim() || 'Anonym';
             const message = messageInput.value.trim();
 
-            if (!message) {
+            // Validation
+            if (!message || message.length === 0) {
                 messageInput.focus();
                 return;
             }
 
+            if (message.length > 500) {
+                alert('Nachricht zu lang (max. 500 Zeichen)');
+                return;
+            }
+
+            if (username.length > 30) {
+                alert('Name zu lang (max. 30 Zeichen)');
+                return;
+            }
+
+            // Send message
             ws.send(JSON.stringify({
                 type: 'chat',
                 username,
                 message
             }));
 
+            // Cooldown to prevent spam
+            sendCooldown = true;
             messageInput.value = '';
             messageInput.focus();
+            
+            setTimeout(() => {
+                sendCooldown = false;
+            }, SEND_COOLDOWN_MS);
         }
 
+        // Event listeners with better UX
         messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
                 sendMessage();
             }
         });
+
+        sendButton.addEventListener('click', sendMessage);
+
+        // Auto-clear old messages to prevent memory leak (keep last 100)
+        function pruneMessages() {
+            const messages = messagesArea.querySelectorAll('.message');
+            if (messages.length > 100) {
+                for (let i = 0; i < messages.length - 100; i++) {
+                    messages[i].remove();
+                }
+            }
+        }
+
+        setInterval(pruneMessages, 30000); // Check every 30 seconds
 
         function escapeHtml(text) {
             const map = {
@@ -307,6 +380,9 @@
             };
             return text.replace(/[&<>"']/g, m => map[m]);
         }
+
+        // Initial connection
+        connectWebSocket();
     </script>
 </body>
 </html>

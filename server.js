@@ -381,7 +381,46 @@ const server = http.createServer(app);
 // WebSocket Server für Chat
 const wss = new WebSocket.Server({ server });
 const chatMessages = []; // In-Memory Storage für Chat-Messages
+const messagesByChannel = new Map(); // Channel-specific message storage
 const maxMessages = 50; // Max 50 Messages behalten
+const MESSAGE_BATCH_SIZE = 5; // Batch messages before processing
+
+// Cleanup function for memory management
+function pruneOldMessages() {
+    const now = Date.now();
+    const MAX_MESSAGE_AGE_MS = 3600000; // 1 hour
+    
+    // Remove old global messages
+    for (let i = 0; i < chatMessages.length; i++) {
+        if (now - chatMessages[i].timestamp > MAX_MESSAGE_AGE_MS) {
+            chatMessages.splice(i, 1);
+            i--;
+        }
+    }
+    
+    // Cleanup channel-specific histories
+    messagesByChannel.forEach((messages, channel) => {
+        for (let i = 0; i < messages.length; i++) {
+            if (now - messages[i].timestamp > MAX_MESSAGE_AGE_MS) {
+                messages.splice(i, 1);
+                i--;
+            }
+        }
+        if (messages.length === 0) {
+            messagesByChannel.delete(channel);
+        }
+    });
+}
+
+// Run cleanup every 30 minutes
+const cleanupInterval = setInterval(pruneOldMessages, 1800000);
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+    clearInterval(cleanupInterval);
+    wss.close();
+    process.exit(0);
+});
 
 wss.on('connection', (ws) => {
     // Send existing messages to new client
@@ -466,6 +505,7 @@ function attachTwitchClientEvents(clientInstance) {
             timestamp: new Date().toLocaleTimeString('de-DE'),
             color: userstate.color || generateUserColor(userstate.username),
             source: 'twitch',
+            channel: channel.replace('#', ''),
             badges: userstate.badges ? Object.keys(userstate.badges) : []
         };
 
