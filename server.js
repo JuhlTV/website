@@ -455,66 +455,100 @@ function generateUserColor(username) {
 let twitchClient = null;
 let twitchConnected = false;
 
+function attachTwitchClientEvents(clientInstance) {
+    clientInstance.on('message', (channel, userstate, message, self) => {
+        if (self) return;
+
+        const twitchMessage = {
+            id: Date.now(),
+            username: userstate['display-name'] || userstate.username,
+            message: message,
+            timestamp: new Date().toLocaleTimeString('de-DE'),
+            color: userstate.color || generateUserColor(userstate.username),
+            source: 'twitch',
+            badges: userstate.badges ? Object.keys(userstate.badges) : []
+        };
+
+        const msgData = JSON.stringify({
+            type: 'new_message',
+            message: twitchMessage
+        });
+
+        wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(msgData);
+            }
+        });
+
+        console.log(`💬 Twitch Chat [${userstate['display-name'] || userstate.username}]: ${message}`);
+    });
+
+    clientInstance.on('connected', () => {
+        twitchConnected = true;
+        console.log(`✅ Mit Twitch Chat verbunden: ${TWITCH_CHANNELS.join(', ')}`);
+    });
+
+    clientInstance.on('disconnected', () => {
+        twitchConnected = false;
+        console.log('❌ Twitch Chat verbindung getrennt');
+    });
+}
+
+async function connectAnonymousTwitchClient() {
+    console.log('👤 Twitch Modus: Anonymous Read (ohne 2FA/Login)');
+    twitchClient = new tmi.client({
+        options: { debug: false },
+        channels: TWITCH_CHANNELS
+    });
+    attachTwitchClientEvents(twitchClient);
+    await twitchClient.connect();
+}
+
 function initializeTwitchChat() {
-    if (TWITCH_CHANNELS.length === 0 || !TWITCH_BOT_USERNAME || !TWITCH_OAUTH_TOKEN) {
+    if (TWITCH_CHANNELS.length === 0) {
         console.log('⚠️ Twitch Bot nicht konfiguriert - Twitch Chat deaktiviert');
-        console.log('   Benötigt: TWITCH_CHANNELS, TWITCH_BOT_USERNAME, TWITCH_OAUTH_TOKEN');
+        console.log('   Benötigt: TWITCH_CHANNELS');
         console.log('   TWITCH_CHANNELS sollte komma-getrennt sein (z.B. "kanal1,kanal2")');
         return;
     }
 
     try {
-        twitchClient = new tmi.client({
-            options: { debug: false },
-            identity: {
-                username: TWITCH_BOT_USERNAME,
-                password: `oauth:${TWITCH_OAUTH_TOKEN}`
-            },
-            channels: TWITCH_CHANNELS
-        });
+        const hasBotCredentials = Boolean(TWITCH_BOT_USERNAME && TWITCH_OAUTH_TOKEN);
 
-        twitchClient.on('message', (channel, userstate, message, self) => {
-            if (self) return; // Ignore own messages
+        if (hasBotCredentials) {
+            const normalizedTwitchUsername = String(TWITCH_BOT_USERNAME).trim().toLowerCase();
+            const normalizedTwitchToken = String(TWITCH_OAUTH_TOKEN).trim();
+            const twitchPassword = normalizedTwitchToken.startsWith('oauth:')
+                ? normalizedTwitchToken
+                : `oauth:${normalizedTwitchToken}`;
 
-            const twitchMessage = {
-                id: Date.now(),
-                username: userstate['display-name'] || userstate.username,
-                message: message,
-                timestamp: new Date().toLocaleTimeString('de-DE'),
-                color: userstate.color || generateUserColor(userstate.username),
-                source: 'twitch',
-                badges: userstate.badges ? Object.keys(userstate.badges) : []
-            };
-
-            // Broadcast to all WebSocket clients
-            const msgData = JSON.stringify({
-                type: 'new_message',
-                message: twitchMessage
-            });
-
-            wss.clients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(msgData);
+            twitchClient = new tmi.client({
+                options: { debug: false },
+                channels: TWITCH_CHANNELS,
+                identity: {
+                username: normalizedTwitchUsername,
+                password: twitchPassword
                 }
             });
+            console.log('🤖 Twitch Modus: Bot-Login (auth)');
+            attachTwitchClientEvents(twitchClient);
 
-            console.log(`💬 Twitch Chat [${userstate['display-name'] || userstate.username}]: ${message}`);
-        });
-
-        twitchClient.on('connected', () => {
-            twitchConnected = true;
-            console.log(`✅ Mit Twitch Chat verbunden: ${TWITCH_CHANNELS.join(', ')}`);
-        });
-
-        twitchClient.on('disconnected', () => {
-            twitchConnected = false;
-            console.log(`❌ Twitch Chat verbindung getrennt`);
-        });
-
-        twitchClient.connect().catch(err => {
-            console.error('Twitch Verbindungsfehler:', err);
-            twitchConnected = false;
-        });
+            twitchClient.connect().catch(async err => {
+                console.error('Twitch Verbindungsfehler:', err);
+                console.log('↩️ Fallback: Wechsle zu Anonymous Read Mode...');
+                try {
+                    await connectAnonymousTwitchClient();
+                } catch (fallbackError) {
+                    console.error('Anonymous Fallback fehlgeschlagen:', fallbackError);
+                    twitchConnected = false;
+                }
+            });
+        } else {
+            connectAnonymousTwitchClient().catch(err => {
+                console.error('Twitch Verbindungsfehler:', err);
+                twitchConnected = false;
+            });
+        }
 
     } catch (error) {
         console.error('Fehler bei Twitch-Initialisierung:', error);
