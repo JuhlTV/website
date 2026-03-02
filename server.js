@@ -1,5 +1,5 @@
-// Sheriff Manfred Mainke - Discord Bot + Express Server
-// This server handles website form submissions and sends Discord DMs
+// Sheriff Manfred Mainke - Discord Bot + Express Server + Twitch Chat Integration
+// This server handles website form submissions, sends Discord DMs, and streams Twitch chat
 
 require('dotenv').config();
 const express = require('express');
@@ -8,6 +8,7 @@ const cors = require('cors');
 const path = require('path');
 const http = require('http');
 const WebSocket = require('ws');
+const tmi = require('tmi.js');
 
 // Environment Variables
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
@@ -18,6 +19,13 @@ const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID;
 const DISCORD_TARGET_USER_ID = process.env.DISCORD_TARGET_USER_ID;
 const DISCORD_OWNER_USER_ID = process.env.DISCORD_OWNER_USER_ID;
 const DISCORD_CHANNEL_ID = process.env.DISCORD_CHANNEL_ID;
+const TWITCH_BOT_USERNAME = process.env.TWITCH_BOT_USERNAME;
+const TWITCH_OAUTH_TOKEN = process.env.TWITCH_OAUTH_TOKEN;
+const TWITCH_CHANNELS_RAW = process.env.TWITCH_CHANNELS || '';
+const TWITCH_CHANNELS = TWITCH_CHANNELS_RAW
+    .split(',')
+    .map(ch => ch.trim().toLowerCase())
+    .filter(ch => ch.length > 0);
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -151,6 +159,9 @@ client.once('clientReady', () => {
     
     // Rotate status every 30 seconds
     setInterval(rotateStatus, 30000);
+    
+    // Initialize Twitch Chat after Discord is ready
+    initializeTwitchChat();
 });
 
 // Discord Bot Event - Error handling
@@ -394,7 +405,8 @@ wss.on('connection', (ws) => {
                     username,
                     message,
                     timestamp: new Date().toLocaleTimeString('de-DE'),
-                    color: generateUserColor(username)
+                    color: generateUserColor(username),
+                    source: 'custom'
                 };
 
                 chatMessages.push(chatMessage);
@@ -437,6 +449,77 @@ function generateUserColor(username) {
         '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B195', '#C39BD3'
     ];
     return colors[Math.abs(hash) % colors.length];
+}
+
+// Twitch Chat Integration via Bot
+let twitchClient = null;
+let twitchConnected = false;
+
+function initializeTwitchChat() {
+    if (TWITCH_CHANNELS.length === 0 || !TWITCH_BOT_USERNAME || !TWITCH_OAUTH_TOKEN) {
+        console.log('⚠️ Twitch Bot nicht konfiguriert - Twitch Chat deaktiviert');
+        console.log('   Benötigt: TWITCH_CHANNELS, TWITCH_BOT_USERNAME, TWITCH_OAUTH_TOKEN');
+        console.log('   TWITCH_CHANNELS sollte komma-getrennt sein (z.B. "kanal1,kanal2")');
+        return;
+    }
+
+    try {
+        twitchClient = new tmi.client({
+            options: { debug: false },
+            identity: {
+                username: TWITCH_BOT_USERNAME,
+                password: `oauth:${TWITCH_OAUTH_TOKEN}`
+            },
+            channels: TWITCH_CHANNELS
+        });
+
+        twitchClient.on('message', (channel, userstate, message, self) => {
+            if (self) return; // Ignore own messages
+
+            const twitchMessage = {
+                id: Date.now(),
+                username: userstate['display-name'] || userstate.username,
+                message: message,
+                timestamp: new Date().toLocaleTimeString('de-DE'),
+                color: userstate.color || generateUserColor(userstate.username),
+                source: 'twitch',
+                badges: userstate.badges ? Object.keys(userstate.badges) : []
+            };
+
+            // Broadcast to all WebSocket clients
+            const msgData = JSON.stringify({
+                type: 'new_message',
+                message: twitchMessage
+            });
+
+            wss.clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(msgData);
+                }
+            });
+
+            console.log(`💬 Twitch Chat [${userstate['display-name'] || userstate.username}]: ${message}`);
+        });
+
+        twitchClient.on('connected', () => {
+            twitchConnected = true;
+            console.log(`✅ Mit Twitch Chat verbunden: ${TWITCH_CHANNELS.join(', ')}`);
+        });
+
+        twitchClient.on('disconnected', () => {
+            twitchConnected = false;
+            console.log(`❌ Twitch Chat verbindung getrennt`);
+        });
+
+        twitchClient.connect().catch(err => {
+            console.error('Twitch Verbindungsfehler:', err);
+            twitchConnected = false;
+        });
+
+    } catch (error) {
+        console.error('Fehler bei Twitch-Initialisierung:', error);
+        twitchConnected = false;
+    }
 }
 
 server.listen(PORT, () => {

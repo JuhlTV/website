@@ -121,6 +121,33 @@
             word-wrap: break-word;
         }
 
+        .chat-message.twitch {
+            border-left-color: #6441a5;
+            background: rgba(100, 65, 165, 0.1);
+        }
+
+        .chat-message.custom {
+            border-left-color: #d4af37;
+            background: rgba(212, 175, 55, 0.08);
+        }
+
+        .message-source {
+            font-size: 10px;
+            color: #888;
+            margin-left: auto;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .message-source.twitch {
+            color: #c77dda;
+        }
+
+        .message-source.custom {
+            color: #d4af37;
+        }
+
         ::-webkit-scrollbar {
             width: 6px;
         }
@@ -205,13 +232,21 @@
 
         function addMessage(msg) {
             const msgEl = document.createElement('div');
-            msgEl.className = 'chat-message';
+            const source = msg.source || 'custom';
+            msgEl.className = `chat-message ${source}`;
             msgEl.style.borderLeftColor = msg.color;
 
+            const sourceBadge = source === 'twitch' ? 
+                '<span class="message-source twitch">Twitch</span>' : 
+                '<span class="message-source custom">Sheriff</span>';
+
             msgEl.innerHTML = `
-                <div class="message-username">
-                    <span class="username-dot" style="background-color: ${msg.color}"></span>
-                    <span>${escapeHtml(msg.username)}</span>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                    <div class="message-username">
+                        <span class="username-dot" style="background-color: ${msg.color}"></span>
+                        <span>${escapeHtml(msg.username)}</span>
+                    </div>
+                    ${sourceBadge}
                 </div>
                 <div class="message-text">${escapeHtml(msg.message)}</div>
             `;
