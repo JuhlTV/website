@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sheriff Chat Overlay</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            color: #fff;
+            font-family: 'Open Sans', sans-serif;
+            padding: 20px;
+        }
+
+        .overlay-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .chat-box {
+            background: linear-gradient(135deg, rgba(0, 20, 40, 0.85) 0%, rgba(0, 10, 20, 0.9) 100%);
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(212, 175, 55, 0.3), inset 0 0 20px rgba(212, 175, 55, 0.05);
+            max-height: 350px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #d4af37;
+        }
+
+        .chat-header h2 {
+            font-family: 'Crimson Text', serif;
+            font-size: 20px;
+            color: #d4af37;
+            letter-spacing: 1px;
+        }
+
+        .live-indicator {
+            width: 10px;
+            height: 10px;
+            background: #FF6B6B;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .messages-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 5px;
+        }
+
+        .chat-message {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid;
+            padding: 10px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            animation: slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            line-height: 1.4;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .message-username {
+            font-weight: 700;
+            font-size: 12px;
+            margin-bottom: 3px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .username-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .message-text {
+            color: #ddd;
+            font-size: 13px;
+            word-wrap: break-word;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d4af37;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f4c542;
+        }
+
+        /* Responsive for different resolutions */
+        @media (max-width: 1920px) {
+            .chat-box {
+                max-height: 300px;
+            }
+        }
+
+        @media (max-width: 1280px) {
+            .chat-box {
+                max-height: 250px;
+            }
+
+            .chat-message {
+                font-size: 12px;
+                padding: 8px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay-container">
+        <div class="chat-box">
+            <div class="chat-header">
+                <div class="live-indicator"></div>
+                <h2>CHAT</h2>
+            </div>
+            <div class="messages-list" id="messagesList"></div>
+        </div>
+    </div>
+
+    <script>
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${window.location.host}`);
+
+        const messagesList = document.getElementById('messagesList');
+        const maxVisibleMessages = 8;
+
+        ws.onopen = () => {
+            console.log('Overlay verbunden mit Chat-Server');
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+
+                if (data.type === 'history') {
+                    messagesList.innerHTML = '';
+                    data.messages.slice(-maxVisibleMessages).forEach(msg => {
+                        addMessage(msg);
+                    });
+                } else if (data.type === 'new_message') {
+                    addMessage(data.message);
+                    
+                    // Keep only last N messages visible
+                    const messages = messagesList.querySelectorAll('.chat-message');
+                    if (messages.length > maxVisibleMessages) {
+                        messages[0].remove();
+                    }
+                }
+            } catch (error) {
+                console.error('Fehler im Overlay:', error);
+            }
+        };
+
+        function addMessage(msg) {
+            const msgEl = document.createElement('div');
+            msgEl.className = 'chat-message';
+            msgEl.style.borderLeftColor = msg.color;
+
+            msgEl.innerHTML = `
+                <div class="message-username">
+                    <span class="username-dot" style="background-color: ${msg.color}"></span>
+                    <span>${escapeHtml(msg.username)}</span>
+                </div>
+                <div class="message-text">${escapeHtml(msg.message)}</div>
+            `;
+
+            messagesList.appendChild(msgEl);
+            messagesList.scrollTop = messagesList.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        ws.onerror = (error) => {
+            console.error('WebSocket Fehler:', error);
+        };
+
+        ws.onclose = () => {
+            console.log('Overlay verbindung getrennt - versuche neu zu verbinden in 3 Sekunden...');
+            setTimeout(() => {
+                location.reload();
+            }, 3000);
+        };
+    </script>
+</body>
+</html>

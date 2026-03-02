@@ -6,6 +6,8 @@ const express = require('express');
 const { Client, GatewayIntentBits } = require('discord.js');
 const cors = require('cors');
 const path = require('path');
+const http = require('http');
+const WebSocket = require('ws');
 
 // Environment Variables
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
@@ -163,6 +165,21 @@ process.on('unhandledRejection', error => {
 // Express Route - Serve main page
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Express Route - Serve chat page
+app.get('/chat', (req, res) => {
+    res.sendFile(path.join(__dirname, 'chat.html'));
+});
+
+// Express Route - Serve overlay page
+app.get('/overlay', (req, res) => {
+    res.sendFile(path.join(__dirname, 'overlay.html'));
+});
+
+// Express Route - Serve OBS tutorial
+app.get('/obs-tutorial', (req, res) => {
+    res.sendFile(path.join(__dirname, 'obs-tutorial.html'));
 });
 
 // Express Route - OAuth callback fallback page
@@ -348,13 +365,88 @@ app.get('/api/bot-status', (req, res) => {
 });
 
 // Start Express server
-const server = app.listen(PORT, () => {
+const server = http.createServer(app);
+
+// WebSocket Server für Chat
+const wss = new WebSocket.Server({ server });
+const chatMessages = []; // In-Memory Storage für Chat-Messages
+const maxMessages = 50; // Max 50 Messages behalten
+
+wss.on('connection', (ws) => {
+    // Send existing messages to new client
+    ws.send(JSON.stringify({ 
+        type: 'history', 
+        messages: chatMessages 
+    }));
+
+    ws.on('message', (data) => {
+        try {
+            const parsed = JSON.parse(data);
+            
+            if (parsed.type === 'chat') {
+                const username = String(parsed.username || 'Anonym').slice(0, 30);
+                const message = String(parsed.message || '').slice(0, 500).trim();
+                
+                if (!message) return;
+
+                const chatMessage = {
+                    id: Date.now(),
+                    username,
+                    message,
+                    timestamp: new Date().toLocaleTimeString('de-DE'),
+                    color: generateUserColor(username)
+                };
+
+                chatMessages.push(chatMessage);
+                
+                // Keep only last 50 messages
+                if (chatMessages.length > maxMessages) {
+                    chatMessages.shift();
+                }
+
+                // Broadcast to all connected clients
+                const msgData = JSON.stringify({ 
+                    type: 'new_message', 
+                    message: chatMessage 
+                });
+                
+                wss.clients.forEach(client => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(msgData);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('WebSocket message error:', error);
+        }
+    });
+
+    ws.on('close', () => {
+        // Client disconnected
+    });
+});
+
+function generateUserColor(username) {
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+        hash = ((hash << 5) - hash) + username.charCodeAt(i);
+        hash = hash & hash;
+    }
+    const colors = [
+        '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
+        '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B195', '#C39BD3'
+    ];
+    return colors[Math.abs(hash) % colors.length];
+}
+
+server.listen(PORT, () => {
     console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`🚔 SHERIFF DEPARTMENT SERVER GESTARTET`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.log(`✓ Express Server läuft auf Port ${PORT}`);
     console.log(`✓ Public URL: ${PUBLIC_URL}`);
     console.log(`✓ Environment: ${NODE_ENV}`);
+    console.log(`✓ WebSocket Chat aktiviert`);
     console.log(`✓ Discord Bot ID: ${CLIENT_ID || '⏳ Nicht konfiguriert'}`);
     console.log(`✓ Guild ID: ${DISCORD_GUILD_ID || '⏳ Nicht konfiguriert'}`);
     console.log(`✓ Target User: ${DISCORD_TARGET_USER_ID || '⏳ Nicht konfiguriert'}`);

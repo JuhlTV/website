@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Tutorial - Sheriff Chat Overlay</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #003366 0%, #001f3f 100%);
+            color: #ddd;
+            font-family: 'Open Sans', sans-serif;
+            line-height: 1.8;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 3px solid #d4af37;
+            padding-bottom: 30px;
+        }
+
+        h1 {
+            font-family: 'Crimson Text', serif;
+            font-size: 48px;
+            color: #d4af37;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            color: #aaa;
+            font-size: 16px;
+        }
+
+        section {
+            background: rgba(0, 20, 40, 0.8);
+            border-left: 4px solid #d4af37;
+            margin-bottom: 30px;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        h2 {
+            font-family: 'Crimson Text', serif;
+            font-size: 32px;
+            color: #f4c542;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h3 {
+            font-family: 'Crimson Text', serif;
+            font-size: 22px;
+            color: #d4af37;
+            margin: 20px 0 10px 0;
+        }
+
+        p {
+            margin-bottom: 15px;
+            color: #ccc;
+        }
+
+        ol, ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        li {
+            margin-bottom: 10px;
+            color: #ccc;
+        }
+
+        code {
+            background: rgba(0, 0, 0, 0.3);
+            border-left: 2px solid #4ECDC4;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #4ECDC4;
+            font-size: 14px;
+        }
+
+        .code-block {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #d4af37;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #4ECDC4;
+        }
+
+        .warning {
+            background: rgba(255, 107, 107, 0.15);
+            border-left: 4px solid #FF6B6B;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            color: #ffb3b3;
+        }
+
+        .success {
+            background: rgba(78, 205, 196, 0.15);
+            border-left: 4px solid #4ECDC4;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            color: #a8e6e1;
+        }
+
+        .step-number {
+            display: inline-block;
+            background: #d4af37;
+            color: #003366;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: 700;
+            margin-right: 10px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #d4af37;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .feature-card strong {
+            color: #d4af37;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .troubleshooting {
+            background: rgba(255, 107, 107, 0.1);
+            border-left: 4px solid #FF6B6B;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        .troubleshooting strong {
+            color: #ffb3b3;
+        }
+
+        a {
+            color: #4ECDC4;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #d4af37 0%, #b5a642 100%);
+            color: #003366;
+            padding: 12px 25px;
+            border-radius: 6px;
+            font-weight: 700;
+            text-decoration: none;
+            margin-top: 15px;
+            transition: transform 0.3s ease;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 32px;
+            }
+
+            h2 {
+                font-size: 24px;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+
+            code {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚔 SHERIFF CHAT OVERLAY</h1>
+            <p class="subtitle">Komplettes OBS-Setup Tutorial für Streamer</p>
+        </header>
+
+        <section>
+            <h2>📋 Was ist das?</h2>
+            <p>Das Sheriff Chat Overlay System ermöglicht es deinen Zuschauern, über die Website live Nachrichten zu schreiben, die sofort in deinem Twitch-Stream angezeigt werden. Perfekt für Interaktion mit deiner Community!</p>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <strong>⚡ Echtzeit</strong>
+                    Nachrichten erscheinen sofort
+                </div>
+                <div class="feature-card">
+                    <strong>🎨 Schön</strong>
+                    Authentisches Sheriff-Design
+                </div>
+                <div class="feature-card">
+                    <strong>📱 Responsive</strong>
+                    Funktioniert auf allen Geräten
+                </div>
+                <div class="feature-card">
+                    <strong>🔧 Einfach</strong>
+                    3 Schritte zum Setup
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>🎯 Schritt 1: Zuschauer zur Chat-Seite einführen</h2>
+            <p>Deine Zuschauer müssen die Chat-Seite besuchen, um Nachrichten zu schreiben:</p>
+            <div class="code-block">
+                YOUR_DOMAIN.com/chat
+            </div>
+            <p><strong>Beispiel:</strong> <code>https://website-production-47e6.up.railway.app/chat</code></p>
+            <p>Du kannst diesen Link:</p>
+            <ul>
+                <li>In der Twitch Panels setzen</li>
+                <li>In deiner Beschreibung verlinken</li>
+                <li>Im Stream-Title erwähnen</li>
+                <li>Als Command im Bot setzen (z.B. <code>!chat</code>)</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>🎬 Schritt 2: Overlay in OBS hinzufügen</h2>
+            <h3>Für OBS Studio (Windows/Mac/Linux):</h3>
+            <ol>
+                <li>
+                    <strong>OBS öffnen</strong> und deine Scene auswählen
+                </li>
+                <li>
+                    <strong>Quelle hinzufügen:</strong> Im "Quellen"-Panel auf <code>+</code> klicken
+                </li>
+                <li>
+                    <strong>"Browser"</strong> auswählen (wenn nicht sichtbar, "Weitere Quellen" auswählen)
+                </li>
+                <li>
+                    <strong>Quelle benennen:</strong> z.B. "Sheriff Chat Overlay"
+                </li>
+                <li>
+                    <strong>URL eingeben:</strong>
+                    <div class="code-block">
+                        https://website-production-47e6.up.railway.app/overlay
+                    </div>
+                    (Oder für lokales Testing: <code>http://localhost:3000/overlay</code>)
+                </li>
+                <li>
+                    <strong>Breite:</strong> 1920 px
+                </li>
+                <li>
+                    <strong>Höhe:</strong> 400 px
+                </li>
+                <li>
+                    <strong>FPS:</strong> 30
+                </li>
+                <li>
+                    <strong>OK klicken</strong>
+                </li>
+            </ol>
+
+            <h3>Quelle positionieren:</h3>
+            <ol>
+                <li>Das Overlay sollte jetzt in deiner Scene sichtbar sein</li>
+                <li>Mit der Maus verschieben (ziehen)</li>
+                <li>Mit den Ecken die Größe anpassen</li>
+                <li>Optimal unten auf dem Stream platzieren (wie ein Twitch-Chat)</li>
+            </ol>
+
+            <div class="success">
+                ✅ <strong>Fertig!</strong> Dein Overlay ist jetzt in OBS eingebunden und zeigt Live-Chat-Nachrichten
+            </div>
+        </section>
+
+        <section>
+            <h2>🔧 Schritt 3: Einstellungen anpassen</h2>
+            
+            <h3>Optional: Overlay-Größe anpassen</h3>
+            <p>Je nach deiner Stream-Auflösung und Design kannst du die Größe ändern:</p>
+            <ul>
+                <li><strong>1920x1080 Stream:</strong> 1920x400 empfohlen (ganzeBreite unten)</li>
+                <li><strong>1280x720 Stream:</strong> 1280x300 empfohlen</li>
+                <li><strong>Oben rechts Platzierung:</strong> 500x350 empfohlen</li>
+                <li><strong>Kleine Corner:</strong> 400x250 empfohlen</li>
+            </ul>
+
+            <h3>Refresh-Rate</h3>
+            <p>Die FPS-Einstellung in OBS:</p>
+            <ul>
+                <li><strong>30 FPS:</strong> Standard (weniger CPU-Last)</li>
+                <li><strong>60 FPS:</strong> Für flüssigere Animationen (höhere CPU-Last)</li>
+            </ul>
+
+            <div class="warning">
+                ⚠️ <strong>Wichtig:</strong> Der Hintergrund ist transparent! Das heißt, das Overlay passt sich automatisch an deinen Stream-Hintergrund an
+            </div>
+        </section>
+
+        <section>
+            <h2>💡 Pro-Tipps</h2>
+            
+            <h3>1. Chat-Link prominent anzeigen</h3>
+            <ul>
+                <li>Erstelle einen Twitch Panel mit dem Chat-Link</li>
+                <li>Oder setze ihn als Custom Command im Streamlabs Bot</li>
+                <li>Beispiel: <code>!chat Schreib deine Nachricht im Chat: [URL]</code></li>
+            </ul>
+
+            <h3>2. Mehrere Overlays</h3>
+            <p>Du kannst das Chat-Overlay mehrfach hinzufügen:</p>
+            <ul>
+                <li>Unten für den Hauptchat</li>
+                <li>Oben rechts für wichtige Nachrichten</li>
+                <li>Seitlich für "Alerts"</li>
+            </ul>
+
+            <h3>3. Responsive Design</h3>
+            <p>Das Overlay passt sich automatisch an unterschiedliche Fenstergrößen an - perfekt für verschiedene Stream-Setups!</p>
+
+            <h3>4. Browser-Quelle neuladen</h3>
+            <p>Falls das Overlay nicht mehr aktuell ist:</p>
+            <ol>
+                <li>Rechtsklick auf die Browser-Quelle in OBS</li>
+                <li>"Interact" auswählen</li>
+                <li>F5 zum Neuladen drücken</li>
+            </ol>
+        </section>
+
+        <section>
+            <h2>🆘 Troubleshooting</h2>
+
+            <div class="troubleshooting">
+                <strong>❌ Overlay wird nicht angezeigt?</strong><br>
+                → Überprüfe, dass die URL korrekt ist (https:// vs http://)<br>
+                → Prüfe, ob OBS Internetzugriff hat (Firewall-Einstellungen)<br>
+                → OBS neu starten
+            </div>
+
+            <div class="troubleshooting">
+                <strong>❌ Nachrichten aktualisieren nicht?</strong><br>
+                → Rechtsklick auf Browser-Quelle → "Refresh Cache"<br>
+                → Überprüfe deine Internetverbindung<br>
+                → Localhost statt domain verwenden zum Testen
+            </div>
+
+            <div class="troubleshooting">
+                <strong>❌ Overlay ist zu klein/groß?</strong><br>
+                → Ändere die Breite/Höhe in den OBS-Quellen-Einstellungen<br>
+                → Verwende die Ecken zum Skalieren
+            </div>
+
+            <div class="troubleshooting">
+                <strong>❌ WebSocket-Fehler in OBS-Konsole?</strong><br>
+                → Der Server läuft möglicherweise nicht<br>
+                → Überprüfe, ob Railway deployt hat<br>
+                → Warte 1-2 Minuten nach dem Deployment
+            </div>
+
+            <div class="troubleshooting">
+                <strong>❌ Zu viele Nachrichten?</strong><br>
+                → Das ist kein Bug - das ist Feature! 🎉<br>
+                → Das System zeigt max. 8 Nachrichten gleichzeitig<br>
+                → Ältere Nachrichten werden automatisch entfernt
+            </div>
+        </section>
+
+        <section>
+            <h2>🚀 Bereit zum Streamen?</h2>
+            <ul>
+                <li>✅ Chat-Link bereit? → <a href="/chat">/chat</a></li>
+                <li>✅ Overlay-Link bereit? → <a href="/overlay">/overlay</a></li>
+                <li>✅ OBS konfiguriert?</li>
+                <li>✅ Zuschauer benachrichtigt?</li>
+            </ul>
+            
+            <h3>Los geht's! 🎬</h3>
+            <p>Teile den Chat-Link mit deinen Zuschauern und genieße die live Interaktion!</p>
+
+            <div class="success">
+                <strong>Tipp:</strong> Der Chat speichert nur die letzten 50 Nachrichten. Nach dem Stream werden die Messages gelöscht (um Speicher zu sparen).
+            </div>
+        </section>
+
+        <section>
+            <h2>📞 Support & Feedback</h2>
+            <p>Wenn es Probleme gibt oder du weitere Features möchtst:</p>
+            <ul>
+                <li>Nutze das <a href="/">Kontaktformular</a> auf der Startseite</li>
+                <li>Oder schreib die Sheriff Department eine Nachricht 🚔</li>
+            </ul>
+            <p style="margin-top: 20px; text-align: center; color: #888;">
+                Sheriff Department Chat System • Sheriff Manfred Mainke
+            </p>
+        </section>
+    </div>
+</body>
+</html>
