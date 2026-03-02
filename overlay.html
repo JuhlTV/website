@@ -73,7 +73,7 @@
             background: linear-gradient(135deg, rgba(3, 18, 32, 0.98) 0%, rgba(5, 25, 40, 0.96) 100%);
             border: 2px solid var(--color-gold);
             border-radius: 16px;
-            padding: 18px;
+            padding: 16px;
             backdrop-filter: blur(14px);
             -webkit-backdrop-filter: blur(14px);
             box-shadow: 
@@ -84,11 +84,13 @@
             display: flex;
             flex-direction: column;
             will-change: transform;
-            contain: layout style paint;
+            contain: layout style;
             position: relative;
             overflow: hidden;
-            max-height: calc(5 * 70px + 100px);
+            height: auto;
+            max-height: 100%;
             transition: all var(--transition-normal);
+            transform: translate3d(0, 0, 0);
         }
 
         .chat-box::before {
@@ -121,13 +123,14 @@
         .chat-header {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 12px;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
             padding-bottom: 12px;
             border-bottom: 1.5px solid var(--color-gold);
             flex-shrink: 0;
             position: relative;
-            z-index: 1;
+            z-index: 2;
         }
 
         .chat-header h2 {
@@ -187,26 +190,27 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            padding: 10px 8px 10px 0;
+            gap: 10px;
+            padding: 0;
             position: relative;
             z-index: 1;
-            contain: size style layout;
-            max-height: 380px;
+            contain: layout style;
+            max-height: 100%;
             min-height: 0;
+            transform: translate3d(0, 0, 0);
         }
 
         .chat-message {
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
             border-left: 3.5px solid;
-            padding: 14px 16px;
+            padding: 12px 14px;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
             animation: slideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-            line-height: 1.55;
+            line-height: 1.5;
             will-change: opacity, transform;
             flex-shrink: 0;
-            contain: layout style paint;
+            contain: layout style;
             transition: all var(--transition-fast);
             backdrop-filter: blur(5px);
             -webkit-backdrop-filter: blur(5px);
@@ -216,6 +220,10 @@
             min-height: fit-content;
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            transform: translate3d(0, 0, 0);
         }
 
         .chat-message::before {
@@ -425,25 +433,27 @@
             position: absolute;
             top: 12px;
             right: 12px;
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             background: var(--color-success);
             box-shadow: 0 0 6px var(--color-success);
-            animation: statusPulse 2s ease-in-out infinite;
-            z-index: 2;
+            z-index: 10;
+            flex-shrink: 0;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            pointer-events: none;
         }
 
         .connection-status.disconnected {
             background: var(--color-error);
             box-shadow: 0 0 6px var(--color-error);
-            animation: none;
+            animation: statusBlink 1.5s ease-in-out infinite;
         }
 
         .connection-status.connecting {
             background: var(--color-warning);
             box-shadow: 0 0 6px var(--color-warning);
-            animation: statusBlink 1s ease-in-out infinite;
+            animation: statusPulse 1s ease-in-out infinite;
         }
 
         @keyframes statusPulse {
@@ -458,24 +468,14 @@
 
         /* Responsive */
         @media (max-width: 1920px) {
-            .chat-box {
-                max-height: 340px;
-                padding: 15px;
-            }
-            
             .chat-header h2 {
                 font-size: 24px;
             }
         }
 
         @media (max-width: 1280px) {
-            .chat-box {
-                max-height: 300px;
-                padding: 14px;
-            }
-
             .chat-message {
-                font-size: 14.5px;
+                font-size: 14px;
                 padding: 11px 13px;
             }
             
@@ -485,44 +485,43 @@
             }
             
             .message-text {
-                font-size: 14.5px;
+                font-size: 14px;
             }
         }
 
         @media (max-width: 768px) {
             body {
-                padding: 10px;
+                padding: 12px;
             }
             
             .overlay-container {
-                height: calc(100vh - 20px);
+                height: calc(100vh - 24px);
             }
             
             .chat-box {
-                border-radius: 8px;
-                max-height: 280px;
-                padding: 12px;
+                border-radius: 12px;
+                padding: 14px;
             }
 
             .chat-header {
-                gap: 8px;
+                gap: 10px;
                 margin-bottom: 10px;
-                padding-bottom: 8px;
+                padding-bottom: 10px;
             }
 
             .chat-message {
                 font-size: 13px;
-                padding: 10px 11px;
-                gap: 6px;
+                padding: 10px 12px;
+                gap: 4px;
             }
 
             .message-username {
-                font-size: 13px;
+                font-size: 12.5px;
             }
 
             .message-text {
                 font-size: 13px;
-                line-height: 1.5;
+                line-height: 1.45;
             }
         }
 
@@ -830,9 +829,7 @@
         }
 
         function scrollToBottom() {
-            requestAnimationFrame(() => {
-                elements.container.scrollTop = elements.container.scrollHeight;
-            });
+            // Not needed with overflow: hidden layout
         }
 
         // ==================== UTILITIES ====================
@@ -870,13 +867,13 @@
         }
 
         // ==================== PERFORMANCE OPTIMIZATIONS ====================
-        // Enable GPU acceleration
+        // Enable GPU acceleration on all key elements
         if (elements.chatBox) {
             elements.chatBox.style.transform = 'translate3d(0, 0, 0)';
         }
 
         if (elements.container) {
-            elements.container.style.willChange = 'scroll-position';
+            elements.container.style.transform = 'translate3d(0, 0, 0)';
         }
 
         // ==================== START ====================
