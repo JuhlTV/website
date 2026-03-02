@@ -349,6 +349,117 @@ wss.on('connection', (ws) => {
 // Cleanup interval
 setInterval(pruneOldMessages, 30 * 60 * 1000);
 
+// ==================== TWITCH INTEGRATION ====================
+function attachTwitchClientEvents(clientInstance) {
+    clientInstance.on('message', (channel, userstate, message, self) => {
+        if (self || !message.trim()) return;
+
+        const twitchMessage = {
+            id: Date.now(),
+            username: userstate['display-name'] || userstate.username || 'Unknown',
+            message: message.trim(),
+            timestamp: new Date().toLocaleTimeString('de-DE'),
+            color: userstate.color || generateUserColor(userstate.username),
+            source: 'twitch',
+            channel: channel.replace('#', '').toLowerCase(),
+            badges: userstate.badges ? Object.keys(userstate.badges) : []
+        };
+
+        // Store in channel-specific history
+        const chKey = twitchMessage.channel;
+        if (!state.websocket.messagesByChannel.has(chKey)) {
+            state.websocket.messagesByChannel.set(chKey, []);
+        }
+        state.websocket.messagesByChannel.get(chKey).push(twitchMessage);
+
+        // Trim channel history
+        const chMessages = state.websocket.messagesByChannel.get(chKey);
+        if (chMessages.length > state.websocket.maxMessages) {
+            chMessages.shift();
+        }
+
+        // Broadcast to all WebSocket clients
+        const broadcast = JSON.stringify({ type: 'new_message', message: twitchMessage });
+        wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(broadcast);
+            }
+        });
+
+        console.log(`💬 [${chKey}] ${userstate['display-name'] || userstate.username}: ${message.slice(0, 50)}...`);
+    });
+
+    clientInstance.on('connected', (addr, port) => {
+        state.twitch.connected = true;
+        console.log(`✅ Twitch Chat verbunden: ${config.twitch.channels.join(', ')}`);
+    });
+
+    clientInstance.on('disconnected', (reason) => {
+        state.twitch.connected = false;
+        console.log(`⚠️ Twitch Chat getrennt: ${reason}`);
+    });
+}
+
+async function connectAnonymousTwitchClient() {
+    console.log('👤 Twitch Modus: Anonymous Read (keine Authentifizierung)');
+    state.twitch.client = new tmi.client({
+        options: { debug: false, messagesLogLevel: 'error' },
+        channels: config.twitch.channels
+    });
+    attachTwitchClientEvents(state.twitch.client);
+    await state.twitch.client.connect().catch(err => {
+        console.error('❌ Twitch Anonymous Connection Failed:', err.message);
+        throw err;
+    });
+}
+
+function initializeTwitchChat() {
+    if (config.twitch.channels.length === 0) {
+        console.log('⚠️ Twitch nicht konfiguriert (TWITCH_CHANNELS fehlt)');
+        return;
+    }
+
+    try {
+        const hasBotAuth = config.twitch.botUsername && config.twitch.oauthToken;
+
+        if (hasBotAuth) {
+            const twitchPassword = config.twitch.oauthToken.startsWith('oauth:')
+                ? config.twitch.oauthToken
+                : `oauth:${config.twitch.oauthToken}`;
+
+            state.twitch.client = new tmi.client({
+                options: { debug: false, messagesLogLevel: 'error' },
+                channels: config.twitch.channels,
+                identity: {
+                    username: config.twitch.botUsername,
+                    password: twitchPassword
+                }
+            });
+
+            console.log('🤖 Twitch Modus: Bot Authentication');
+            attachTwitchClientEvents(state.twitch.client);
+
+            state.twitch.client.connect().catch(async (err) => {
+                console.warn('⚠️ Bot Auth fehlgeschlagen, versuche Anonymous Mode...');
+                try {
+                    await connectAnonymousTwitchClient();
+                } catch (fallbackErr) {
+                    console.error('❌ Beide Twitch-Modi fehlgeschlagen:', fallbackErr.message);
+                    state.twitch.connected = false;
+                }
+            });
+        } else {
+            connectAnonymousTwitchClient().catch(err => {
+                console.error('❌ Twitch Connection Error:', err.message);
+                state.twitch.connected = false;
+            });
+        }
+    } catch (error) {
+        console.error('❌ Twitch Initialization Error:', error.message);
+        state.twitch.connected = false;
+    }
+}
+
 // ==================== SERVER STARTUP ====================
 server.listen(config.server.port, () => {
     console.log(`\n${'━'.repeat(50)}`);
