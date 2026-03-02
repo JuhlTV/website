@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sheriff Chat Overlay</title>
-    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:wght@600;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:wght@600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -15,12 +15,12 @@
         body {
             background: transparent;
             color: #fff;
-            font-family: 'Open Sans', sans-serif;
+            font-family: 'Poppins', sans-serif;
             padding: 20px;
         }
 
         .overlay-container {
-            max-width: 1200px;
+            max-width: 550px;
             margin: 0 auto;
         }
 
@@ -47,7 +47,7 @@
 
         .chat-header h2 {
             font-family: 'Crimson Text', serif;
-            font-size: 20px;
+            font-size: 24px;
             color: #d4af37;
             letter-spacing: 1px;
         }
@@ -81,11 +81,11 @@
         .chat-message {
             background: rgba(255, 255, 255, 0.05);
             border-left: 3px solid;
-            padding: 10px 12px;
+            padding: 12px 14px;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 16px;
             animation: slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            line-height: 1.4;
+            line-height: 1.5;
         }
 
         @keyframes slideIn {
@@ -101,8 +101,8 @@
 
         .message-username {
             font-weight: 700;
-            font-size: 12px;
-            margin-bottom: 3px;
+            font-size: 15px;
+            margin-bottom: 4px;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -117,7 +117,7 @@
 
         .message-text {
             color: #ddd;
-            font-size: 13px;
+            font-size: 16px;
             word-wrap: break-word;
         }
 
@@ -169,18 +169,18 @@
         /* Responsive for different resolutions */
         @media (max-width: 1920px) {
             .chat-box {
-                max-height: 300px;
+                max-height: 320px;
             }
         }
 
         @media (max-width: 1280px) {
             .chat-box {
-                max-height: 250px;
+                max-height: 280px;
             }
 
             .chat-message {
-                font-size: 12px;
-                padding: 8px 10px;
+                font-size: 15px;
+                padding: 11px 13px;
             }
         }
     </style>
