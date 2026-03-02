@@ -1,5 +1,7 @@
 // Sheriff Manfred Mainke - Discord Bot + Express Server + Twitch Chat Integration
-// This server handles website form submissions, sends Discord DMs, and streams Twitch chat
+// Multi-channel streaming chat overlay system with real-time WebSocket broadcasting
+
+'use strict';
 
 require('dotenv').config();
 const express = require('express');
@@ -10,33 +12,54 @@ const http = require('http');
 const WebSocket = require('ws');
 const tmi = require('tmi.js');
 
-// Environment Variables
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const CLIENT_ID = process.env.CLIENT_ID;
-const CLIENT_SECRET = process.env.CLIENT_SECRET;
-const PUBLIC_URL = process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 3000}`;
-const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID;
-const DISCORD_TARGET_USER_ID = process.env.DISCORD_TARGET_USER_ID;
-const DISCORD_OWNER_USER_ID = process.env.DISCORD_OWNER_USER_ID;
-const DISCORD_CHANNEL_ID = process.env.DISCORD_CHANNEL_ID;
-const TWITCH_BOT_USERNAME = process.env.TWITCH_BOT_USERNAME;
-const TWITCH_OAUTH_TOKEN = process.env.TWITCH_OAUTH_TOKEN;
-const TWITCH_CHANNELS_RAW = process.env.TWITCH_CHANNELS || '';
-const TWITCH_CHANNELS = TWITCH_CHANNELS_RAW
-    .split(',')
-    .map(ch => ch.trim().toLowerCase())
-    .filter(ch => ch.length > 0);
-const PORT = process.env.PORT || 3000;
-const NODE_ENV = process.env.NODE_ENV || 'development';
+// ==================== CONFIGURATION ====================
+const config = {
+    discord: {
+        token: process.env.DISCORD_TOKEN,
+        clientId: process.env.CLIENT_ID,
+        guildId: process.env.DISCORD_GUILD_ID,
+        targetUserId: process.env.DISCORD_TARGET_USER_ID,
+        ownerUserId: process.env.DISCORD_OWNER_USER_ID,
+        channelId: process.env.DISCORD_CHANNEL_ID
+    },
+    twitch: {
+        botUsername: process.env.TWITCH_BOT_USERNAME,
+        oauthToken: process.env.TWITCH_OAUTH_TOKEN,
+        channels: (process.env.TWITCH_CHANNELS || '')
+            .split(',')
+            .map(ch => ch.trim().toLowerCase())
+            .filter(ch => ch.length > 0)
+    },
+    server: {
+        port: process.env.PORT || 3000,
+        publicUrl: process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 3000}`,
+        nodeEnv: process.env.NODE_ENV || 'development'
+    }
+};
 
-// Initialize Express app
+// Validate critical config
+if (!config.discord.token) {
+    console.error('❌ FEHLER: DISCORD_TOKEN nicht in .env gesetzt!');
+    process.exit(1);
+}
+
+// Initialize Express app & HTTP server
 const app = express();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cors());
-app.use(express.static(__dirname));
+// ==================== MIDDLEWARE ====================
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+    methods: ['GET', 'POST', 'OPTIONS'],
+    credentials: true
+}));
+app.use(express.static(__dirname, {
+    maxAge: '1h',
+    etag: true
+}));
 
 // Initialize Discord Client
 const client = new Client({
@@ -47,74 +70,68 @@ const client = new Client({
     ]
 });
 
-let botReady = false;
+// ==================== STATE ====================
+const state = {
+    discord: {
+        ready: false
+    },
+    twitch: {
+        client: null,
+        connected: false
+    },
+    websocket: {
+        messagesByChannel: new Map(),
+        maxMessages: 50,
+        messageExpiry: 3600000 // 1 hour in ms
+    }
+};
 
+// ==================== UTILITIES ====================
 function normalizeInput(value) {
     return String(value || '')
+        .trim()
         .replace(/\s+/g, ' ')
-        .trim();
+        .slice(0, 2000);
 }
 
 function safeField(value, maxLength = 1000) {
     const normalized = normalizeInput(value);
-    if (!normalized) {
-        return 'Nicht angegeben';
-    }
-    if (normalized.length <= maxLength) {
-        return normalized;
-    }
-    return `${normalized.slice(0, maxLength - 3)}...`;
+    return normalized.length <= maxLength
+        ? normalized
+        : `${normalized.slice(0, maxLength - 3)}...`;
 }
 
 function buildMessageId() {
-    const randomSuffix = Math.random().toString(36).slice(2, 8).toUpperCase();
-    return `MSG-${Date.now()}-${randomSuffix}`;
+    return `MSG-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
 
+function generateUserColor(username) {
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+        hash = ((hash << 5) - hash) + username.charCodeAt(i);
+        hash = hash & hash;
+    }
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
+    return colors[Math.abs(hash) % colors.length];
+}
+
+// ==================== DISCORD HELPERS ====================
 function buildContactEmbed({ name, email, subject, message, messageId, timestamp, ownerCopy = false }) {
     return {
         color: ownerCopy ? 0x003366 : 0xd4af37,
-        title: ownerCopy
-            ? '📨 Owner Copy - Sheriff Website Nachricht'
-            : '📨 Sheriff Manfred Mainke - Website Nachricht',
+        title: ownerCopy ? '📨 Owner Copy - Website Nachricht' : '📨 Sheriff Website Nachricht',
         description: ownerCopy
             ? 'Zusätzliche Owner-Kopie einer neuen Kontaktanfrage.'
             : 'Neue Kontaktanfrage über das Sheriff Department Website-Formular.',
         fields: [
-            {
-                name: '🆔 Vorgangsnummer',
-                value: `\`${messageId}\``,
-                inline: false
-            },
-            {
-                name: '👤 Name',
-                value: safeField(name, 256),
-                inline: true
-            },
-            {
-                name: '📧 E-Mail',
-                value: safeField(email, 256),
-                inline: true
-            },
-            {
-                name: '📝 Betreff',
-                value: safeField(subject, 1024),
-                inline: false
-            },
-            {
-                name: '💬 Nachricht',
-                value: safeField(message, 1024),
-                inline: false
-            },
-            {
-                name: '🌐 Quelle',
-                value: PUBLIC_URL,
-                inline: false
-            }
+            { name: '🆔 Vorgangsnummer', value: `\`${messageId}\``, inline: false },
+            { name: '👤 Name', value: safeField(name, 256), inline: true },
+            { name: '📧 E-Mail', value: safeField(email, 256), inline: true },
+            { name: '📝 Betreff', value: safeField(subject, 1024), inline: false },
+            { name: '💬 Nachricht', value: safeField(message, 1024), inline: false },
+            { name: '🌐 Quelle', value: config.server.publicUrl, inline: false }
         ],
-        footer: {
-            text: ownerCopy ? 'Sheriff Department Contact System • Owner Copy' : 'Sheriff Department Contact System'
-        },
+        footer: { text: ownerCopy ? 'Sheriff • Owner Copy' : 'Sheriff Department System' },
         timestamp
     };
 }
@@ -123,97 +140,77 @@ function buildDMText({ messageId }) {
     return `🚔 Neue Website-Kontaktanfrage eingegangen\nVorgangsnummer: ${messageId}`;
 }
 
-// Discord Bot Status Rotation
+// Discord Status Rotation
 const botStatusRotation = [
     { name: 'Sheriff Manfred Mainke', type: 'WATCHING' },
     { name: 'Community Protection', type: 'WATCHING' },
-    { name: '911 Dispatcher Calls', type: 'LISTENING' },
-    { name: 'Law Enforcement Duties', type: 'PLAYING' },
-    { name: 'Website Contact Forms', type: 'MONITORING' },
-    { name: 'County Safety', type: 'WATCHING' }
+    { name: 'Live Stream Chats', type: 'MONITORING' },
+    { name: 'Website Messages', type: 'LISTENING' },
+    { name: 'County Safety', type: 'WATCHING' },
+    { name: 'Twitch Integration', type: 'PLAYING' }
 ];
 
 let currentStatusIndex = 0;
 
 function rotateStatus() {
+    if (!client.user) return;
     const status = botStatusRotation[currentStatusIndex];
     client.user.setPresence({
-        activities: [{
-            name: status.name,
-            type: status.type
-        }],
+        activities: [{ name: status.name, type: status.type }],
         status: 'online'
     });
     currentStatusIndex = (currentStatusIndex + 1) % botStatusRotation.length;
 }
 
-// Discord Bot Event - Ready
+// ==================== DISCORD EVENTS ====================
 client.once('clientReady', () => {
-    console.log(`✓ Discord Bot logged in as ${client.user.tag}`);
-    console.log(`✓ Bot is ready to send DMs!`);
-    console.log(`🤖 Sheriff M. Mainke Status aktiviert`);
-    botReady = true;
-    
-    // Set initial status
+    console.log(`\n✅ Discord Bot online: ${client.user.tag}`);
+    state.discord.ready = true;
     rotateStatus();
-    
-    // Rotate status every 30 seconds
     setInterval(rotateStatus, 30000);
-    
-    // Initialize Twitch Chat after Discord is ready
     initializeTwitchChat();
 });
 
-// Discord Bot Event - Error handling
 client.on('error', error => {
-    console.error('Discord Client Error:', error);
+    console.error('❌ Discord Error:', error.message);
 });
 
 process.on('unhandledRejection', error => {
-    console.error('Unhandled Rejection:', error);
+    console.error('⚠️ Unhandled Rejection:', error?.message || error);
 });
 
-// Express Route - Serve main page
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+// ==================== EXPRESS ROUTES ====================
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        discord: state.discord.ready,
+        twitch: state.twitch.connected,
+        timestamp: new Date().toISOString()
+    });
 });
 
-// Express Route - Serve chat page
-app.get('/chat', (req, res) => {
-    res.sendFile(path.join(__dirname, 'chat.html'));
-});
+// Static pages
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/chat', (req, res) => res.sendFile(path.join(__dirname, 'chat.html')));
+app.get('/overlay', (req, res) => res.sendFile(path.join(__dirname, 'overlay.html')));
+app.get('/obs-tutorial', (req, res) => res.sendFile(path.join(__dirname, 'obs-tutorial.html')));
 
-// Express Route - Serve overlay page
-app.get('/overlay', (req, res) => {
-    res.sendFile(path.join(__dirname, 'overlay.html'));
-});
-
-// Express Route - Serve OBS tutorial
-app.get('/obs-tutorial', (req, res) => {
-    res.sendFile(path.join(__dirname, 'obs-tutorial.html'));
-});
-
-// Express Route - OAuth callback fallback page
+// OAuth Callback (for future Discord oauth)
 app.get('/auth/callback', (req, res) => {
-        const hasCode = Boolean(req.query && req.query.code);
-
-        if (hasCode) {
-                return res.status(200).send(`
-                        <html>
-                            <head><title>Discord OAuth Callback</title></head>
-                            <body style="font-family: Arial, sans-serif; padding: 24px; background: #0b1a2b; color: #fff;">
-                                <h2>✅ Callback erreicht</h2>
-                                <p>Der Redirect funktioniert. Für einen normalen Bot-Invite brauchst du diesen OAuth-Code-Flow aber nicht.</p>
-                                <p>Nutze stattdessen einen Invite-Link mit nur <b>bot</b> + <b>applications.commands</b>.</p>
-                            </body>
-                        </html>
-                `);
-        }
-
-        return res.status(200).send('Discord OAuth callback endpoint is available.');
+    res.status(200).send(`
+        <!DOCTYPE html>
+        <html>
+            <head><title>Discord OAuth</title></head>
+            <body style="font-family: Arial, sans-serif; padding: 24px; background: #0b1a2b; color: #fff;">
+                <h2>✅ OAuth Callback</h2>
+                <p>Callback endpoint is ready.</p>
+            </body>
+        </html>
+    `);
 });
 
-// Express Route - Handle form submissions
+// Contact Form Handler
 app.post('/api/contact', async (req, res) => {
     const name = normalizeInput(req.body?.name);
     const email = normalizeInput(req.body?.email);
@@ -222,412 +219,176 @@ app.post('/api/contact', async (req, res) => {
 
     // Validation
     if (!name || !email || !subject || !message) {
-        return res.status(400).json({
-            success: false,
-            message: 'Alle Felder sind erforderlich'
-        });
+        return res.status(400).json({ success: false, message: 'Alle Felder erforderlich' });
     }
 
     try {
-        if (!botReady) {
-            return res.status(503).json({
-                success: false,
-                message: 'Bot ist nicht bereit. Bitte versuchen Sie es später erneut.'
-            });
+        if (!state.discord.ready) {
+            return res.status(503).json({ success: false, message: 'Bot nicht bereit' });
         }
 
-        // Validiere Environment-Variable
-        if (!DISCORD_TARGET_USER_ID) {
-            console.error('❌ DISCORD_TARGET_USER_ID nicht in .env gesetzt!');
-            return res.status(500).json({
-                success: false,
-                message: 'Bot-Konfiguration unvollständig'
-            });
+        if (!config.discord.targetUserId || !config.discord.guildId) {
+            console.error('❌ Discord Config incomplete');
+            return res.status(500).json({ success: false, message: 'Server-Konfiguration unvollständig' });
         }
 
-        if (!DISCORD_GUILD_ID) {
-            console.error('❌ DISCORD_GUILD_ID nicht in .env gesetzt!');
-            return res.status(500).json({
-                success: false,
-                message: 'Bot-Konfiguration unvollständig (Guild fehlt)'
-            });
-        }
-
-        // Stelle sicher, dass User und Bot denselben Server teilen
-        const guild = await client.guilds.fetch(DISCORD_GUILD_ID);
-        const member = await guild.members.fetch(DISCORD_TARGET_USER_ID);
-        const targetUser = member.user;
-
+        // Fetch user and send DM
+        const guild = await client.guilds.fetch(config.discord.guildId);
+        const member = await guild.members.fetch(config.discord.targetUserId);
         const timestamp = new Date();
         const messageId = buildMessageId();
 
-        // Send DM
-        await targetUser.send({
+        await member.user.send({
             content: buildDMText({ messageId }),
-            embeds: [buildContactEmbed({
-                name,
-                email,
-                subject,
-                message,
-                messageId,
-                timestamp
-            })]
+            embeds: [buildContactEmbed({ name, email, subject, message, messageId, timestamp })]
         });
 
-        if (DISCORD_OWNER_USER_ID && DISCORD_OWNER_USER_ID !== DISCORD_TARGET_USER_ID) {
+        // Send owner copy if configured
+        if (config.discord.ownerUserId && config.discord.ownerUserId !== config.discord.targetUserId) {
             try {
-                const ownerMember = await guild.members.fetch(DISCORD_OWNER_USER_ID);
+                const ownerMember = await guild.members.fetch(config.discord.ownerUserId);
                 await ownerMember.user.send({
                     content: buildDMText({ messageId }),
-                    embeds: [buildContactEmbed({
-                        name,
-                        email,
-                        subject,
-                        message,
-                        messageId,
-                        timestamp,
-                        ownerCopy: true
-                    })]
+                    embeds: [buildContactEmbed({ name, email, subject, message, messageId, timestamp, ownerCopy: true })]
                 });
-                console.log('✓ Owner-Kopie wurde per DM gesendet');
-            } catch (ownerError) {
-                console.warn('⚠️ Owner-DM konnte nicht gesendet werden:', ownerError?.code || ownerError?.message || ownerError);
+            } catch (err) {
+                console.warn('⚠️ Owner DM fehler:', err.message);
             }
         }
 
-        // Send message to Discord channel if configured
-        if (DISCORD_CHANNEL_ID) {
+        // Log to Discord channel if configured
+        if (config.discord.channelId) {
             try {
-                const channel = await client.channels.fetch(DISCORD_CHANNEL_ID);
-                if (channel && channel.isTextBased()) {
-                    await channel.send({
-                        content: `📢 Neue Kontaktanfrage eingegangen • ID: \`${messageId}\``,
-                        embeds: [buildContactEmbed({
-                            name,
-                            email,
-                            subject,
-                            message,
-                            messageId,
-                            timestamp
-                        })]
-                    });
-                    console.log(`✓ Nachricht in Channel ${DISCORD_CHANNEL_ID} gepostet`);
-                }
-            } catch (channelError) {
-                console.warn('⚠️ Channel-Nachricht konnte nicht gesendet werden:', channelError?.code || channelError?.message || channelError);
+                const channel = await client.channels.fetch(config.discord.channelId);
+                await channel.send({
+                    content: `✅ [${messageId}] Kontaktformular: ${name}`,
+                    embeds: [buildContactEmbed({ name, email, subject, message, messageId, timestamp })]
+                });
+            } catch (err) {
+                console.warn('⚠️ Channel log fehler:', err.message);
             }
         }
 
-        console.log(`✓ Nachricht ${messageId} von ${name} wurde an Discord DM gesendet`);
-
-        return res.status(200).json({
-            success: true,
-            message: 'Vielen Dank! Ihre Nachricht wurde erfolgreich übermittelt.',
-            messageId
-        });
+        console.log(`✅ Contact Form: ${name} <${email}>`);
+        res.json({ success: true, message: 'Nachricht versendet', messageId });
 
     } catch (error) {
-        console.error('Fehler beim Senden der Discord DM:', error);
-
-        if (error && (error.code === 50007 || error.code === '50007')) {
-            return res.status(500).json({
-                success: false,
-                message: 'Discord blockiert DMs an diesen User (Privacy-Einstellung). Aktiviere "Direktnachrichten von Servermitgliedern zulassen" für den gemeinsamen Server.'
-            });
-        }
-
-        if (error && (error.code === 10013 || error.code === '10013')) {
-            return res.status(500).json({
-                success: false,
-                message: 'DISCORD_TARGET_USER_ID ist ungültig oder der User wurde nicht gefunden.'
-            });
-        }
-
-        if (error && (error.code === 10004 || error.code === '10004')) {
-            return res.status(500).json({
-                success: false,
-                message: 'DISCORD_GUILD_ID ist ungültig oder der Bot ist nicht auf dem Server.'
-            });
-        }
-
-        return res.status(500).json({
-            success: false,
-            message: 'Es gab einen Fehler beim Übermitteln Ihrer Nachricht. Bitte versuchen Sie es später erneut.'
-        });
+        console.error('❌ Contact Handler Error:', error.message);
+        res.status(500).json({ success: false, message: 'Fehler beim Versenden' });
     }
 });
 
-// Express Route - Health check
-app.get('/api/health', (req, res) => {
-    res.status(200).json({
-        status: 'ok',
-        botReady: botReady,
-        timestamp: new Date().toISOString()
-    });
-});
-
-// Express Route - Bot status
-app.get('/api/bot-status', (req, res) => {
-    res.status(200).json({
-        botReady: botReady,
-        botTag: botReady ? client.user.tag : 'Not connected',
-        uptime: client.uptime
-    });
-});
-
-// Start Express server
-const server = http.createServer(app);
-
-// WebSocket Server für Chat
-const wss = new WebSocket.Server({ server });
-const chatMessages = []; // In-Memory Storage für Chat-Messages
-const messagesByChannel = new Map(); // Channel-specific message storage
-const maxMessages = 50; // Max 50 Messages behalten
-const MESSAGE_BATCH_SIZE = 5; // Batch messages before processing
-
-// Cleanup function for memory management
+// ==================== WEBSOCKET ====================
 function pruneOldMessages() {
     const now = Date.now();
-    const MAX_MESSAGE_AGE_MS = 3600000; // 1 hour
-    
-    // Remove old global messages
-    for (let i = 0; i < chatMessages.length; i++) {
-        if (now - chatMessages[i].timestamp > MAX_MESSAGE_AGE_MS) {
-            chatMessages.splice(i, 1);
-            i--;
-        }
+    for (const [channel, messages] of state.websocket.messagesByChannel.entries()) {
+        state.websocket.messagesByChannel.set(
+            channel,
+            messages.filter(msg => (now - msg.timestamp) < state.websocket.messageExpiry)
+        );
     }
-    
-    // Cleanup channel-specific histories
-    messagesByChannel.forEach((messages, channel) => {
-        for (let i = 0; i < messages.length; i++) {
-            if (now - messages[i].timestamp > MAX_MESSAGE_AGE_MS) {
-                messages.splice(i, 1);
-                i--;
-            }
-        }
-        if (messages.length === 0) {
-            messagesByChannel.delete(channel);
-        }
-    });
 }
 
-// Run cleanup every 30 minutes
-const cleanupInterval = setInterval(pruneOldMessages, 1800000);
-
-// Graceful shutdown
-process.on('SIGINT', () => {
-    clearInterval(cleanupInterval);
-    wss.close();
-    process.exit(0);
-});
-
 wss.on('connection', (ws) => {
-    // Send existing messages to new client
-    ws.send(JSON.stringify({ 
-        type: 'history', 
-        messages: chatMessages 
+    console.log('📱 WebSocket Client verbunden');
+
+    // Send message history to new client
+    const allMessages = Array.from(state.websocket.messagesByChannel.values()).flat();
+    ws.send(JSON.stringify({
+        type: 'history',
+        messages: allMessages.slice(-state.websocket.maxMessages)
     }));
 
     ws.on('message', (data) => {
         try {
-            const parsed = JSON.parse(data);
-            
-            if (parsed.type === 'chat') {
-                const username = String(parsed.username || 'Anonym').slice(0, 30);
-                const message = String(parsed.message || '').slice(0, 500).trim();
-                
-                if (!message) return;
-
+            const msg = JSON.parse(data);
+            if (msg.type === 'chat' && msg.message && msg.username) {
                 const chatMessage = {
                     id: Date.now(),
-                    username,
-                    message,
+                    username: String(msg.username).slice(0, 30),
+                    message: String(msg.message).slice(0, 500).trim(),
                     timestamp: new Date().toLocaleTimeString('de-DE'),
-                    color: generateUserColor(username),
+                    color: msg.color || generateUserColor(msg.username),
                     source: 'custom'
                 };
 
-                chatMessages.push(chatMessage);
-                
-                // Keep only last 50 messages
-                if (chatMessages.length > maxMessages) {
-                    chatMessages.shift();
+                const channel = 'all';
+                if (!state.websocket.messagesByChannel.has(channel)) {
+                    state.websocket.messagesByChannel.set(channel, []);
+                }
+                state.websocket.messagesByChannel.get(channel).push(chatMessage);
+
+                // Trim if exceeds max
+                const messages = state.websocket.messagesByChannel.get(channel);
+                if (messages.length > state.websocket.maxMessages) {
+                    messages.shift();
                 }
 
-                // Broadcast to all connected clients
-                const msgData = JSON.stringify({ 
-                    type: 'new_message', 
-                    message: chatMessage 
-                });
-                
+                // Broadcast to all clients
+                const broadcast = JSON.stringify({ type: 'new_message', message: chatMessage });
                 wss.clients.forEach(client => {
                     if (client.readyState === WebSocket.OPEN) {
-                        client.send(msgData);
+                        client.send(broadcast);
                     }
                 });
             }
         } catch (error) {
-            console.error('WebSocket message error:', error);
+            console.error('❌ WebSocket message error:', error.message);
         }
     });
 
     ws.on('close', () => {
-        // Client disconnected
+        console.log('📱 WebSocket Client getrennt');
+    });
+
+    ws.on('error', (error) => {
+        console.error('❌ WebSocket Error:', error.message);
     });
 });
 
-function generateUserColor(username) {
-    let hash = 0;
-    for (let i = 0; i < username.length; i++) {
-        hash = ((hash << 5) - hash) + username.charCodeAt(i);
-        hash = hash & hash;
-    }
-    const colors = [
-        '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
-        '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B195', '#C39BD3'
-    ];
-    return colors[Math.abs(hash) % colors.length];
-}
+// Cleanup interval
+setInterval(pruneOldMessages, 30 * 60 * 1000);
 
-// Twitch Chat Integration via Bot
-let twitchClient = null;
-let twitchConnected = false;
-
-function attachTwitchClientEvents(clientInstance) {
-    clientInstance.on('message', (channel, userstate, message, self) => {
-        if (self) return;
-
-        const twitchMessage = {
-            id: Date.now(),
-            username: userstate['display-name'] || userstate.username,
-            message: message,
-            timestamp: new Date().toLocaleTimeString('de-DE'),
-            color: userstate.color || generateUserColor(userstate.username),
-            source: 'twitch',
-            channel: channel.replace('#', ''),
-            badges: userstate.badges ? Object.keys(userstate.badges) : []
-        };
-
-        const msgData = JSON.stringify({
-            type: 'new_message',
-            message: twitchMessage
-        });
-
-        wss.clients.forEach(client => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(msgData);
-            }
-        });
-
-        console.log(`💬 Twitch Chat [${userstate['display-name'] || userstate.username}]: ${message}`);
-    });
-
-    clientInstance.on('connected', () => {
-        twitchConnected = true;
-        console.log(`✅ Mit Twitch Chat verbunden: ${TWITCH_CHANNELS.join(', ')}`);
-    });
-
-    clientInstance.on('disconnected', () => {
-        twitchConnected = false;
-        console.log('❌ Twitch Chat verbindung getrennt');
-    });
-}
-
-async function connectAnonymousTwitchClient() {
-    console.log('👤 Twitch Modus: Anonymous Read (ohne 2FA/Login)');
-    twitchClient = new tmi.client({
-        options: { debug: false },
-        channels: TWITCH_CHANNELS
-    });
-    attachTwitchClientEvents(twitchClient);
-    await twitchClient.connect();
-}
-
-function initializeTwitchChat() {
-    if (TWITCH_CHANNELS.length === 0) {
-        console.log('⚠️ Twitch Bot nicht konfiguriert - Twitch Chat deaktiviert');
-        console.log('   Benötigt: TWITCH_CHANNELS');
-        console.log('   TWITCH_CHANNELS sollte komma-getrennt sein (z.B. "kanal1,kanal2")');
-        return;
-    }
-
-    try {
-        const hasBotCredentials = Boolean(TWITCH_BOT_USERNAME && TWITCH_OAUTH_TOKEN);
-
-        if (hasBotCredentials) {
-            const normalizedTwitchUsername = String(TWITCH_BOT_USERNAME).trim().toLowerCase();
-            const normalizedTwitchToken = String(TWITCH_OAUTH_TOKEN).trim();
-            const twitchPassword = normalizedTwitchToken.startsWith('oauth:')
-                ? normalizedTwitchToken
-                : `oauth:${normalizedTwitchToken}`;
-
-            twitchClient = new tmi.client({
-                options: { debug: false },
-                channels: TWITCH_CHANNELS,
-                identity: {
-                username: normalizedTwitchUsername,
-                password: twitchPassword
-                }
-            });
-            console.log('🤖 Twitch Modus: Bot-Login (auth)');
-            attachTwitchClientEvents(twitchClient);
-
-            twitchClient.connect().catch(async err => {
-                console.error('Twitch Verbindungsfehler:', err);
-                console.log('↩️ Fallback: Wechsle zu Anonymous Read Mode...');
-                try {
-                    await connectAnonymousTwitchClient();
-                } catch (fallbackError) {
-                    console.error('Anonymous Fallback fehlgeschlagen:', fallbackError);
-                    twitchConnected = false;
-                }
-            });
-        } else {
-            connectAnonymousTwitchClient().catch(err => {
-                console.error('Twitch Verbindungsfehler:', err);
-                twitchConnected = false;
-            });
-        }
-
-    } catch (error) {
-        console.error('Fehler bei Twitch-Initialisierung:', error);
-        twitchConnected = false;
-    }
-}
-
-server.listen(PORT, () => {
-    console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-    console.log(`🚔 SHERIFF DEPARTMENT SERVER GESTARTET`);
-    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-    console.log(`✓ Express Server läuft auf Port ${PORT}`);
-    console.log(`✓ Public URL: ${PUBLIC_URL}`);
-    console.log(`✓ Environment: ${NODE_ENV}`);
-    console.log(`✓ WebSocket Chat aktiviert`);
-    console.log(`✓ Discord Bot ID: ${CLIENT_ID || '⏳ Nicht konfiguriert'}`);
-    console.log(`✓ Guild ID: ${DISCORD_GUILD_ID || '⏳ Nicht konfiguriert'}`);
-    console.log(`✓ Target User: ${DISCORD_TARGET_USER_ID || '⏳ Nicht konfiguriert'}`);
-    console.log(`✓ Owner User: ${DISCORD_OWNER_USER_ID || '⏳ Nicht konfiguriert'}`);
-    console.log(`✓ Log Channel: ${DISCORD_CHANNEL_ID || '⏳ Nicht konfiguriert'}`);
-    console.log(`✓ Warte auf Discord Bot Verbindung...`);
-    console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+// ==================== SERVER STARTUP ====================
+server.listen(config.server.port, () => {
+    console.log(`\n${'━'.repeat(50)}`);
+    console.log(`🚔 SHERIFF DEPARTMENT - SYSTEM GESTARTET`);
+    console.log(`${'━'.repeat(50)}`);
+    console.log(`✓ Port: ${config.server.port}`);
+    console.log(`✓ URL: ${config.server.publicUrl}`);
+    console.log(`✓ Environment: ${config.server.nodeEnv}`);
+    console.log(`✓ WebSocket: Aktiv`);
+    console.log(`✓ Discord: ${state.discord.ready ? '🟢 Ready' : '🟡 Verbindend...'}`);
+    console.log(`✓ Twitch: ${state.twitch.connected ? '🟢 Verbunden' : '⏳ Initialisierung...'}`);
+    console.log(`${'━'.repeat(50)}\n`);
 });
 
-// Login Discord Bot
-// Discord Bot login mit Environment Token
-if (!DISCORD_TOKEN) {
-    console.error('❌ FEHLER: DISCORD_TOKEN nicht in .env gesetzt!');
+// ==================== DISCORD AUTH ====================
+try {
+    client.login(config.discord.token);
+} catch (error) {
+    console.error('❌ Discord Login Fehler:', error.message);
     process.exit(1);
 }
 
-client.login(DISCORD_TOKEN);
-
-// Graceful shutdown
+// ==================== GRACEFUL SHUTDOWN ====================
 process.on('SIGINT', async () => {
-    console.log('\n📴 Server wird heruntergefahren...');
-    await client.destroy();
-    server.close();
+    console.log('\n📴 Fahre Server herunter...');
+    try {
+        await client.destroy();
+        wss.close();
+        server.close();
+        console.log('✅ Server sauber heruntergefahren');
+    } catch (error) {
+        console.error('❌ Shutdown Fehler:', error.message);
+    }
     process.exit(0);
 });
 
-module.exports = { app, client };
+// Error handling für unerwartete Fehler
+process.on('uncaughtException', (error) => {
+    console.error('🔴 Uncaught Exception:', error.message);
+    process.exit(1);
+});
+
+module.exports = { app, client, server, wss };

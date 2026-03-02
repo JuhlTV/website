@@ -10,6 +10,7 @@
         :root {
             --color-gold: #d4af37;
             --color-gold-dark: #b8860b;
+            --color-gold-light: #f4d560;
             --color-twitch: #6441a5;
             --color-twitch-bright: #7f51d6;
             --color-twitch-light: #c77dda;
@@ -18,9 +19,10 @@
             --color-warning: #FBBF24;
             --color-error: #EF4444;
             
-            --bg-dark: rgba(0, 10, 20, 0.95);
-            --bg-darker: rgba(0, 5, 10, 0.98);
-            --bg-glass: rgba(10, 30, 50, 0.4);
+            --bg-dark: rgba(0, 10, 20, 0.96);
+            --bg-darker: rgba(0, 5, 10, 0.99);
+            --bg-glass: rgba(10, 30, 50, 0.45);
+            --bg-glass-light: rgba(20, 50, 80, 0.3);
             
             --text-primary: #ffffff;
             --text-secondary: #e0e7ff;
@@ -30,9 +32,11 @@
             --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
             --shadow-lg: 0 8px 32px rgba(212, 175, 55, 0.25);
             --shadow-glow: 0 0 30px rgba(212, 175, 55, 0.15);
+            --shadow-inset: inset 0 0 20px rgba(255, 255, 255, 0.05);
             
-            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 280ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         * {
@@ -66,32 +70,49 @@
         }
 
         .chat-box {
-            background: linear-gradient(135deg, rgba(5, 25, 40, 0.95) 0%, var(--bg-dark) 100%);
+            background: linear-gradient(135deg, rgba(3, 18, 32, 0.98) 0%, rgba(5, 25, 40, 0.96) 100%);
             border: 2px solid var(--color-gold);
-            border-radius: 12px;
-            padding: 16px;
-            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            padding: 18px;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
             box-shadow: 
                 var(--shadow-lg),
+                var(--shadow-glow),
                 inset 0 0 25px rgba(212, 175, 55, 0.08),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            max-height: 360px;
             display: flex;
             flex-direction: column;
             will-change: transform;
             contain: layout style paint;
             position: relative;
             overflow: hidden;
+            max-height: calc(5 * 70px + 100px);
+            transition: all var(--transition-normal);
         }
 
         .chat-box::before {
             content: '';
             position: absolute;
-            top: -50%;
-            right: -10%;
+            top: -40%;
+            right: -15%;
+            width: 350px;
+            height: 350px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.08) 0%, transparent 65%);
+            pointer-events: none;
+            border-radius: 50%;
+            z-index: 0;
+            will-change: transform;
+        }
+
+        .chat-box::after {
+            content: '';
+            position: absolute;
+            bottom: -30%;
+            left: -20%;
             width: 300px;
             height: 300px;
-            background: radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
+            background: radial-gradient(circle, rgba(100, 65, 165, 0.06) 0%, transparent 70%);
             pointer-events: none;
             border-radius: 50%;
             z-index: 0;
@@ -111,87 +132,145 @@
 
         .chat-header h2 {
             font-family: 'Crimson Text', serif;
-            font-size: 26px;
+            font-size: 28px;
             font-weight: 700;
             color: var(--color-gold);
-            letter-spacing: 1.5px;
+            letter-spacing: 1.8px;
             white-space: nowrap;
-            text-shadow: 0 2px 8px rgba(212, 175, 55, 0.2);
+            text-shadow: 
+                0 2px 8px rgba(212, 175, 55, 0.2),
+                0 0 10px rgba(212, 175, 55, 0.1);
+            transition: all var(--transition-normal);
+        }
+
+        .chat-header h2:hover {
+            color: var(--color-gold-light);
+            text-shadow: 
+                0 3px 12px rgba(212, 175, 55, 0.3),
+                0 0 15px rgba(212, 175, 55, 0.15);
+            letter-spacing: 2px;
         }
 
         .live-indicator {
-            width: 12px;
-            height: 12px;
+            width: 14px;
+            height: 14px;
             background: var(--color-live);
             border-radius: 50%;
-            animation: pulse 1.2s ease-in-out infinite, glow 1.2s ease-in-out infinite;
+            animation: pulse 1.3s ease-in-out infinite, glow 1.3s ease-in-out infinite;
             flex-shrink: 0;
-            box-shadow: 0 0 8px var(--color-live);
+            box-shadow: 
+                0 0 10px var(--color-live),
+                0 0 20px rgba(255, 107, 107, 0.3);
+            border: 2px solid var(--color-live);
         }
 
         @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); }
+            0%, 100% { 
+                transform: scale(1);
+            }
+            50% { 
+                transform: scale(1.25);
+            }
         }
 
         @keyframes glow {
-            0%, 100% { box-shadow: 0 0 8px var(--color-live), 0 0 12px var(--color-live); }
-            50% { box-shadow: 0 0 4px var(--color-live), 0 0 8px var(--color-live); }
+            0%, 100% { 
+                box-shadow: 0 0 10px var(--color-live), 0 0 20px rgba(255, 107, 107, 0.3);
+            }
+            50% { 
+                box-shadow: 0 0 5px var(--color-live), 0 0 10px rgba(255, 107, 107, 0.2);
+            }
         }
 
         .messages-list {
             flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            padding: 8px 6px 8px 0;
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
+            gap: 12px;
+            padding: 10px 8px 10px 0;
             position: relative;
             z-index: 1;
             contain: size style layout;
+            max-height: 380px;
+            min-height: 0;
         }
 
         .chat-message {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%);
-            border-left: 3px solid;
-            padding: 13px 15px;
-            border-radius: 6px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+            border-left: 3.5px solid;
+            padding: 14px 16px;
+            border-radius: 8px;
             font-size: 16px;
-            animation: slideIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-            line-height: 1.5;
+            animation: slideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            line-height: 1.55;
             will-change: opacity, transform;
             flex-shrink: 0;
             contain: layout style paint;
-            transition: background-color var(--transition-fast), border-color var(--transition-fast);
-            backdrop-filter: blur(4px);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            transition: all var(--transition-fast);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.25),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            min-height: fit-content;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chat-message::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            pointer-events: none;
         }
 
         .chat-message:hover {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%);
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.04) 100%);
+            box-shadow: 
+                0 4px 12px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
         }
 
         @keyframes slideIn {
-            from {
+            0% {
                 opacity: 0;
-                transform: translateX(-16px);
+                transform: translateX(-20px) translateY(8px);
+                filter: blur(4px);
             }
-            to {
+            50% {
+                opacity: 0.85;
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0) translateY(0);
+                filter: blur(0);
+            }
+        }
+
+        @keyframes fadeOut {
+            0% {
                 opacity: 1;
                 transform: translateX(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateX(-30px);
             }
         }
 
         .message-header {
             display: flex;
             justify-content: space-between;
-            align-items: baseline;
+            align-items: center;
             gap: 10px;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
         }
 
         .message-username {
@@ -200,7 +279,7 @@
             display: flex;
             align-items: center;
             gap: 7px;
-            flex: 1;
+            flex: 0 1 auto;
             min-width: 0;
             letter-spacing: 0.3px;
         }
@@ -214,6 +293,42 @@
             box-shadow: 0 0 4px currentColor, inset 0 0 2px rgba(0, 0, 0, 0.3);
         }
 
+        .message-badges {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 1px 5px;
+            background: rgba(100, 65, 165, 0.4);
+            border: 0.5px solid rgba(127, 81, 214, 0.5);
+            border-radius: 3px;
+            font-size: 8px;
+            font-weight: 800;
+            color: #c77dda;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            box-shadow: 0 0 3px rgba(100, 65, 165, 0.3);
+        }
+
+        .badge.moderator {
+            background: rgba(34, 197, 94, 0.4);
+            border-color: rgba(34, 197, 94, 0.5);
+            color: #86efac;
+        }
+
+        .badge.subscriber {
+            background: rgba(168, 85, 247, 0.4);
+            border-color: rgba(168, 85, 247, 0.5);
+            color: #d8b4fe;
+        }
+
         .message-text {
             color: var(--text-secondary);
             font-size: 15.5px;
@@ -222,24 +337,7 @@
             font-weight: 400;
             line-height: 1.55;
             hyphens: auto;
-        }
-
-        .chat-message.twitch {
-            border-left-color: var(--color-twitch-bright);
-            background: linear-gradient(135deg, rgba(100, 65, 165, 0.15) 0%, rgba(100, 65, 165, 0.05) 100%);
-        }
-
-        .chat-message.twitch:hover {
-            background: linear-gradient(135deg, rgba(100, 65, 165, 0.18) 0%, rgba(100, 65, 165, 0.08) 100%);
-        }
-
-        .chat-message.custom {
-            border-left-color: var(--color-gold);
-            background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.05) 100%);
-        }
-
-        .chat-message.custom:hover {
-            background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(212, 175, 55, 0.08) 100%);
+            white-space: pre-wrap;
         }
 
         .message-source {
@@ -254,6 +352,7 @@
             border-radius: 3px;
             background: rgba(160, 174, 192, 0.1);
             transition: all var(--transition-fast);
+            align-self: flex-start;
         }
 
         .message-source.twitch {
@@ -266,6 +365,34 @@
             color: var(--color-gold);
             background: rgba(212, 175, 55, 0.15);
             border: 0.5px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .chat-message.twitch {
+            border-left-color: var(--color-twitch-bright);
+            background: linear-gradient(135deg, rgba(100, 65, 165, 0.15) 0%, rgba(100, 65, 165, 0.05) 100%);
+        }
+
+        .chat-message.twitch:hover {
+            background: linear-gradient(135deg, rgba(100, 65, 165, 0.18) 0%, rgba(100, 65, 165, 0.08) 100%);
+            border-left-color: var(--color-twitch-light);
+        }
+
+        .chat-message.twitch .message-username {
+            color: var(--color-twitch-light);
+        }
+
+        .chat-message.custom {
+            border-left-color: var(--color-gold);
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0.05) 100%);
+        }
+
+        .chat-message.custom:hover {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(212, 175, 55, 0.08) 100%);
+            border-left-color: var(--color-gold-light);
+        }
+
+        .chat-message.custom .message-username {
+            color: var(--color-gold-light);
         }
 
         ::-webkit-scrollbar {
@@ -458,14 +585,17 @@
     <script>
         // ==================== CONFIGURATION ====================
         const CONFIG = {
-            MAX_VISIBLE_MESSAGES: 8,
+            MAX_VISIBLE_MESSAGES: 5,
             MESSAGE_DEDUP_TIMEOUT: 500,
-            MAX_RECONNECT_ATTEMPTS: 10,
+            MAX_RECONNECT_ATTEMPTS: 15,
             BASE_RECONNECT_DELAY: 1000,
             MAX_RECONNECT_DELAY: 30000,
             MESSAGE_CLEANUP_INTERVAL: 30000,
             MAX_CACHED_MESSAGES: 100,
-            BATCH_RENDER_SIZE: 3
+            BATCH_RENDER_SIZE: 2,
+            MESSAGE_DISPLAY_TIME: null, // null = infinite, number = ms before fade out
+            ANIMATION_DURATION: 350,
+            AUTO_SCROLL_SPEED: 'smooth'
         };
 
         // ==================== STATE ====================
@@ -493,10 +623,22 @@
             // Update header if channel filter set
             if (state.filterChannel) {
                 elements.chatHeader.textContent = `#${state.filterChannel.toUpperCase()}`;
+                document.title = `Chat - ${state.filterChannel}`;
+            } else {
+                document.title = 'Sheriff Chat Overlay';
             }
 
             // Setup visibility change listener for better reconnect
             document.addEventListener('visibilitychange', handleVisibilityChange);
+            
+            // Setup window focus listener
+            window.addEventListener('focus', () => {
+                if (!state.isConnected && !state.isConnecting) {
+                    console.log('🔄 Window focused - attempting reconnect');
+                    state.reconnectAttempts = Math.max(0, state.reconnectAttempts - 3);
+                    connectWebSocket();
+                }
+            });
 
             // Connect WebSocket
             connectWebSocket();
@@ -505,6 +647,7 @@
             setInterval(cleanupMessageCache, CONFIG.MESSAGE_CLEANUP_INTERVAL);
 
             console.log('✅ Sheriff Chat Overlay initialized');
+            console.log(`📺 Mode: ${state.filterChannel ? `Channel Filter (#${state.filterChannel})` : 'All Channels'}`);
         }
 
         // ==================== WEBSOCKET ====================
@@ -620,22 +763,28 @@
             // Deduplication
             const msgKey = `${message.username}|${message.message}|${message.source}`;
             if (state.messageCache.has(msgKey)) {
+                console.log('⊘ Duplicate message ignored');
                 return;
             }
 
             if (!shouldDisplayMessage(message)) {
+                console.log(`⊙ Message filtered (channel: ${message.channel})`);
                 return;
             }
 
             state.messageCache.set(msgKey);
             setTimeout(() => state.messageCache.delete(msgKey), CONFIG.MESSAGE_DEDUP_TIMEOUT);
 
+            console.log(`💬 [${message.source}] ${message.username}: ${message.message.slice(0, 30)}...`);
+            
             renderMessage(message);
 
             // Trim old messages
             const messages = elements.container.querySelectorAll('.chat-message');
             if (messages.length > CONFIG.MAX_VISIBLE_MESSAGES) {
-                messages[0].remove();
+                const oldMsg = messages[0];
+                oldMsg.style.animation = 'fadeOut 200ms ease-out forwards';
+                setTimeout(() => oldMsg.remove(), 200);
             }
 
             scrollToBottom();
@@ -657,12 +806,21 @@
                 ? '<span class="message-source twitch">Twitch</span>'
                 : '<span class="message-source custom">Sheriff</span>';
 
+            // Build badges HTML
+            const badges = msg.badges ? msg.badges.map(badge => {
+                let badgeClass = 'badge';
+                if (badge.includes('moderator') || badge === 'mod') badgeClass += ' moderator';
+                if (badge.includes('subscriber') || badge === 'subscriber') badgeClass += ' subscriber';
+                return `<span class="${badgeClass}">${badge}</span>`;
+            }).join('') : '';
+
             msgEl.innerHTML = `
                 <div class="message-header">
                     <div class="message-username">
                         <span class="username-dot" style="background-color: ${escapeHtml(msg.color || '#fff')}"></span>
                         <span>${escapeHtml(msg.username || 'Anonym')}</span>
                     </div>
+                    ${badges ? `<div class="message-badges">${badges}</div>` : ''}
                     ${sourceBadge}
                 </div>
                 <div class="message-text">${escapeHtml(msg.message || '')}</div>
