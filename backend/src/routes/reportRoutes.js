@@ -68,11 +68,11 @@ router.post("/", requireAuth, async (req, res) => {
 
 router.get("/", requireAuth, async (req, res) => {
   try {
-    let sql = "SELECT id, username, vehicle_name, created_at FROM reports ORDER BY created_at DESC";
+    let sql = "SELECT id, username, vehicle_key, vehicle_name, created_at FROM reports ORDER BY created_at DESC";
     const params = [];
 
     if (req.user.role !== "geraetewart") {
-      sql = "SELECT id, username, vehicle_name, created_at FROM reports WHERE user_id = ? ORDER BY created_at DESC";
+      sql = "SELECT id, username, vehicle_key, vehicle_name, created_at FROM reports WHERE user_id = ? ORDER BY created_at DESC";
       params.push(req.user.id);
     }
 
@@ -80,6 +80,127 @@ router.get("/", requireAuth, async (req, res) => {
     return res.json({ reports: rows });
   } catch (error) {
     return res.status(500).json({ message: "Fehler beim Laden", error: error.message });
+  }
+});
+
+router.get("/defects", requireAuth, async (req, res) => {
+  const { priority, vehicleKey } = req.query;
+
+  if (priority && !["niedrig", "mittel", "kritisch"].includes(String(priority))) {
+    return res.status(400).json({ message: "Ungueltige Prioritaet" });
+  }
+
+  try {
+    const clauses = [];
+    const params = [];
+
+    if (req.user.role !== "geraetewart") {
+      clauses.push("r.user_id = ?");
+      params.push(req.user.id);
+    }
+
+    if (priority) {
+      clauses.push("d.priority = ?");
+      params.push(String(priority));
+    }
+
+    if (vehicleKey) {
+      clauses.push("r.vehicle_key = ?");
+      params.push(String(vehicleKey));
+    }
+
+    const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+
+    const [defects] = await pool.execute(
+      `SELECT
+        d.id,
+        d.item_label,
+        d.description_text,
+        d.priority,
+        d.timestamp,
+        d.username,
+        r.id AS report_id,
+        r.vehicle_key,
+        r.vehicle_name,
+        r.created_at AS report_created_at
+      FROM defects d
+      INNER JOIN reports r ON r.id = d.report_id
+      ${where}
+      ORDER BY d.timestamp DESC`,
+      params
+    );
+
+    const [summary] = await pool.execute(
+      `SELECT d.priority, COUNT(*) AS total
+      FROM defects d
+      INNER JOIN reports r ON r.id = d.report_id
+      ${where}
+      GROUP BY d.priority`,
+      params
+    );
+
+    return res.json({ defects, summary });
+  } catch (error) {
+    return res.status(500).json({ message: "Fehler beim Laden der Maengel", error: error.message });
+  }
+});
+
+router.get("/history", requireAuth, async (req, res) => {
+  const { vehicleKey } = req.query;
+
+  try {
+    const clauses = [];
+    const params = [];
+
+    if (req.user.role !== "geraetewart") {
+      clauses.push("r.user_id = ?");
+      params.push(req.user.id);
+    }
+
+    if (vehicleKey) {
+      clauses.push("r.vehicle_key = ?");
+      params.push(String(vehicleKey));
+    }
+
+    const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+
+    const [history] = await pool.execute(
+      `SELECT
+        r.id,
+        r.vehicle_key,
+        r.vehicle_name,
+        r.username,
+        r.created_at,
+        COALESCE(cr.total_checks, 0) AS total_checks,
+        COALESCE(cr.defect_checks, 0) AS defect_checks,
+        COALESCE(df.defects_total, 0) AS defects_total,
+        COALESCE(df.defects_kritisch, 0) AS defects_kritisch,
+        COALESCE(df.defects_mittel, 0) AS defects_mittel,
+        COALESCE(df.defects_niedrig, 0) AS defects_niedrig
+      FROM reports r
+      LEFT JOIN (
+        SELECT report_id, COUNT(*) AS total_checks, SUM(CASE WHEN status = 'defekt' THEN 1 ELSE 0 END) AS defect_checks
+        FROM checklist_results
+        GROUP BY report_id
+      ) cr ON cr.report_id = r.id
+      LEFT JOIN (
+        SELECT
+          report_id,
+          COUNT(*) AS defects_total,
+          SUM(CASE WHEN priority = 'kritisch' THEN 1 ELSE 0 END) AS defects_kritisch,
+          SUM(CASE WHEN priority = 'mittel' THEN 1 ELSE 0 END) AS defects_mittel,
+          SUM(CASE WHEN priority = 'niedrig' THEN 1 ELSE 0 END) AS defects_niedrig
+        FROM defects
+        GROUP BY report_id
+      ) df ON df.report_id = r.id
+      ${where}
+      ORDER BY r.created_at DESC`,
+      params
+    );
+
+    return res.json({ history });
+  } catch (error) {
+    return res.status(500).json({ message: "Fehler beim Laden des Verlaufs", error: error.message });
   }
 });
 

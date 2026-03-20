@@ -53,6 +53,19 @@ export default function ChecklistForm({ user, onReportCreated }) {
     setChecks((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
   }
 
+  function setStatus(index, nextStatus) {
+    if (nextStatus === "ok") {
+      updateCheck(index, {
+        status: "ok",
+        defectDescription: "",
+        defectPriority: "mittel"
+      });
+      return;
+    }
+
+    updateCheck(index, { status: "defekt" });
+  }
+
   async function submitChecklist(event) {
     event.preventDefault();
     setError("");
@@ -130,13 +143,24 @@ export default function ChecklistForm({ user, onReportCreated }) {
             <div className="inline-fields">
               <label>
                 Status
-                <select
-                  value={check.status}
-                  onChange={(e) => updateCheck(index, { status: e.target.value })}
-                >
-                  <option value="ok">OK</option>
-                  <option value="defekt">Defekt</option>
-                </select>
+                <div className="status-checkboxes">
+                  <label className="status-check">
+                    <input
+                      type="checkbox"
+                      checked={check.status === "ok"}
+                      onChange={() => setStatus(index, "ok")}
+                    />
+                    <span>OK</span>
+                  </label>
+                  <label className="status-check">
+                    <input
+                      type="checkbox"
+                      checked={check.status === "defekt"}
+                      onChange={() => setStatus(index, "defekt")}
+                    />
+                    <span>Defekt</span>
+                  </label>
+                </div>
               </label>
 
               <label>

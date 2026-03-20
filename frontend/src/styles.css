@@ -96,6 +96,11 @@ p {
   grid-template-columns: 1fr;
 }
 
+.panel-stack {
+  display: grid;
+  gap: 1rem;
+}
+
 .card {
   border: 1px solid var(--border);
   border-radius: 16px;
@@ -231,6 +236,24 @@ button:disabled {
   grid-template-columns: 1fr;
 }
 
+.status-checkboxes {
+  display: flex;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.status-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+.status-check input {
+  width: auto;
+}
+
 .defect-box {
   border-left: 4px solid var(--danger);
   margin-top: 0.4rem;
@@ -260,6 +283,13 @@ button:disabled {
   gap: 0.7rem;
 }
 
+.summary-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
 .report-item {
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -274,6 +304,12 @@ button:disabled {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+}
+
+.history-priority {
+  display: grid;
+  gap: 0.4rem;
+  align-content: start;
 }
 
 @media (min-width: 960px) {
