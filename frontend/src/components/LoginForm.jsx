@@ -6,9 +6,20 @@ export default function LoginForm({ onLogin }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
+
+  function validateForm() {
+    const errors = {};
+    if (!username.trim()) errors.username = "Benutzername erforderlich";
+    if (!password) errors.password = "Passwort erforderlich";
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (!validateForm()) return;
+
     setError("");
     setLoading(true);
 
@@ -22,7 +33,8 @@ export default function LoginForm({ onLogin }) {
       localStorage.setItem("user", JSON.stringify(data.user));
       onLogin(data.user);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || "Anmeldung fehlgeschlagen. Backend nicht erreichbar?");
+      console.error("Login error:", err);
     } finally {
       setLoading(false);
     }
@@ -39,9 +51,18 @@ export default function LoginForm({ onLogin }) {
           <input
             type="text"
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            onChange={(e) => {
+              setUsername(e.target.value);
+              setValidationErrors(prev => ({ ...prev, username: "" }));
+            }}
+            autocomplete="username"
+            aria-invalid={!!validationErrors.username}
+            placeholder="z.B. admin"
             required
           />
+          {validationErrors.username && (
+            <small style={{ color: "var(--danger)" }}>{validationErrors.username}</small>
+          )}
         </label>
 
         <label>
@@ -49,12 +70,25 @@ export default function LoginForm({ onLogin }) {
           <input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setValidationErrors(prev => ({ ...prev, password: "" }));
+            }}
+            autocomplete="current-password"
+            aria-invalid={!!validationErrors.password}
+            placeholder="Passwort eingeben"
             required
           />
+          {validationErrors.password && (
+            <small style={{ color: "var(--danger)" }}>{validationErrors.password}</small>
+          )}
         </label>
 
-        {error ? <div className="error-box">{error}</div> : null}
+        {error && (
+          <div className="error-box" role="alert" style={{ marginTop: "1rem" }}>
+            ⚠️ {error}
+          </div>
+        )}
 
         <button type="submit" disabled={loading}>
           {loading ? "Anmeldung..." : "Anmelden"}

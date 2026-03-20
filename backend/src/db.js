@@ -20,7 +20,10 @@ function buildMongoUriFromParts() {
 }
 
 function resolveMongoUri() {
-  const envUrl = process.env.MONGODB_URI || process.env.MONGO_URL;
+  const envUrl =
+    process.env.MONGO_URL ||
+    process.env.MONGO_PRIVATE_URL ||
+    process.env.MONGODB_URI;
   if (envUrl) {
     return envUrl;
   }

@@ -57,11 +57,28 @@ async function ensureAdminUser() {
 
 async function start() {
   try {
+    console.log("🚀 Starting Feuerwehr Checkliste Backend...");
+    console.log(`📡 API Base: http://localhost:${port}/api`);
+    console.log(`🌐 CORS Origin: ${process.env.FRONTEND_ORIGIN || "http://localhost:5173"}`);
+    
+    console.log("\n🔗 Connecting to MongoDB...");
     await connectDatabase();
+    console.log("✅ MongoDB connected successfully");
+    console.log("\n👤 Setting up admin user...");
     await ensureAdminUser();
 
     app.listen(port, () => {
-      console.log(`API listening on port ${port}`);
+      console.log(`\n✨ Server running on http://localhost:${port}`);
+      console.log("\n📋 Available endpoints:");
+      console.log(`   GET  /api/health`);
+      console.log(`   POST /api/auth/register`);
+      console.log(`   POST /api/auth/login`);
+      console.log(`   GET  /api/vehicles`);
+      console.log(`   POST /api/reports`);
+      console.log(`   GET  /api/reports`);
+      console.log(`   GET  /api/reports/defects`);
+      console.log(`   GET  /api/reports/history`);
+      console.log(`\n🎯 Test: curl http://localhost:${port}/api/health\n`);
     });
   } catch (error) {
     console.error("Startup failed:", error.message);
