@@ -30,6 +30,12 @@ function resolveMongoUri() {
     return genericUrl;
   }
 
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "MongoDB URI missing in production. Set MONGODB_URI or MONGO_URL (or a mongodb DATABASE_URL)."
+    );
+  }
+
   return buildMongoUriFromParts();
 }
 
