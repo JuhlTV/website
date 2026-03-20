@@ -1,7 +1,7 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { pool } from "../db.js";
+import { User } from "../models/User.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const router = express.Router();
@@ -21,10 +21,10 @@ router.post("/register", async (req, res) => {
 
   try {
     const hash = await bcrypt.hash(password, 12);
-    await pool.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", [username, hash, safeRole]);
+    await User.create({ username, passwordHash: hash, role: safeRole });
     return res.status(201).json({ message: "Benutzer erstellt" });
   } catch (error) {
-    if (error.code === "ER_DUP_ENTRY") {
+    if (error?.code === 11000) {
       return res.status(409).json({ message: "Benutzername existiert bereits" });
     }
     return res.status(500).json({ message: "Fehler beim Erstellen", error: error.message });
@@ -39,21 +39,20 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-    const [rows] = await pool.execute("SELECT id, username, password_hash, role FROM users WHERE username = ?", [username]);
-    const user = rows[0];
+    const user = await User.findOne({ username }).lean();
 
     if (!user) {
       return res.status(401).json({ message: "Login fehlgeschlagen" });
     }
 
-    const match = await bcrypt.compare(password, user.password_hash);
+    const match = await bcrypt.compare(password, user.passwordHash);
     if (!match) {
       return res.status(401).json({ message: "Login fehlgeschlagen" });
     }
 
     const token = jwt.sign(
       {
-        id: user.id,
+        id: String(user._id),
         username: user.username,
         role: user.role
       },
@@ -64,7 +63,7 @@ router.post("/login", async (req, res) => {
     return res.json({
       token,
       user: {
-        id: user.id,
+        id: String(user._id),
         username: user.username,
         role: user.role
       }

@@ -1,40 +1,41 @@
-import mysql from "mysql2/promise";
+import mongoose from "mongoose";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-function resolveDbConfig() {
-  const url = process.env.DATABASE_URL || process.env.MYSQL_URL;
+function buildMongoUriFromParts() {
+  const host = process.env.MONGO_HOST || "127.0.0.1";
+  const port = Number(process.env.MONGO_PORT || 27017);
+  const dbName = process.env.MONGO_DB || "feuerwehr_checkliste";
+  const user = process.env.MONGO_USER;
+  const password = process.env.MONGO_PASSWORD;
 
-  if (url) {
-    const parsed = new URL(url);
-    return {
-      host: parsed.hostname,
-      port: Number(parsed.port || 3306),
-      user: decodeURIComponent(parsed.username),
-      password: decodeURIComponent(parsed.password),
-      database: parsed.pathname.replace(/^\//, "")
-    };
+  if (user && password) {
+    const encodedUser = encodeURIComponent(user);
+    const encodedPassword = encodeURIComponent(password);
+    return `mongodb://${encodedUser}:${encodedPassword}@${host}:${port}/${dbName}?authSource=admin`;
   }
 
-  return {
-    host: process.env.DB_HOST || process.env.MYSQLHOST || "127.0.0.1",
-    port: Number(process.env.DB_PORT || process.env.MYSQLPORT || 3306),
-    user: process.env.DB_USER || process.env.MYSQLUSER,
-    password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD,
-    database: process.env.DB_NAME || process.env.MYSQLDATABASE
-  };
+  return `mongodb://${host}:${port}/${dbName}`;
 }
 
-const dbConfig = resolveDbConfig();
+function resolveMongoUri() {
+  const envUrl = process.env.MONGODB_URI || process.env.MONGO_URL;
+  if (envUrl) {
+    return envUrl;
+  }
 
-export const pool = mysql.createPool({
-  host: dbConfig.host,
-  port: dbConfig.port,
-  user: dbConfig.user,
-  password: dbConfig.password,
-  database: dbConfig.database,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
-});
+  const genericUrl = process.env.DATABASE_URL;
+  if (genericUrl && genericUrl.startsWith("mongodb")) {
+    return genericUrl;
+  }
+
+  return buildMongoUriFromParts();
+}
+
+export async function connectDatabase() {
+  const mongoUri = resolveMongoUri();
+  await mongoose.connect(mongoUri);
+}
+
+export { mongoose };

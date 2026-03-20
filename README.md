@@ -16,8 +16,7 @@ Moderne, mobile-first Webanwendung fuer die digitale Fahrzeugpruefung der Freiwi
 ## Projektstruktur
 
 - `frontend/` React + Vite App
-- `backend/` Express API + MySQL + PDF + Mail
-- `backend/database/schema.sql` Datenbankschema
+- `backend/` Express API + MongoDB + PDF + Mail
 
 ## Schnellstart lokal
 
@@ -30,13 +29,9 @@ npm install
 2. Backend-Umgebung konfigurieren:
 
 - Datei `backend/.env.example` nach `backend/.env` kopieren
-- Werte eintragen (MySQL, JWT, SMTP)
+- Werte eintragen (MongoDB, JWT, SMTP)
 
-3. Datenbank anlegen:
-
-- SQL aus `backend/database/schema.sql` ausfuehren
-
-4. Entwicklungsmodus starten:
+3. Entwicklungsmodus starten:
 
 ```bash
 npm run dev
@@ -57,7 +52,7 @@ Passwort nach dem ersten Login aendern.
 
 ## Railway Deployment (Kurz)
 
-1. MySQL-Service in Railway erstellen.
+1. MongoDB-Service in Railway erstellen.
 2. App deployen (Node.js).
 3. Environment-Variablen aus `backend/.env.example` setzen.
 4. Build Command:

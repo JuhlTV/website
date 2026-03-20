@@ -4,7 +4,8 @@ import cors from "cors";
 import bcrypt from "bcryptjs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { pool } from "./db.js";
+import { connectDatabase } from "./db.js";
+import { User } from "./models/User.js";
 import authRoutes from "./routes/authRoutes.js";
 import vehicleRoutes from "./routes/vehicleRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
@@ -44,23 +45,19 @@ if (process.env.NODE_ENV === "production") {
 }
 
 async function ensureAdminUser() {
-  const [rows] = await pool.execute("SELECT id FROM users WHERE username = ?", ["admin"]);
-  if (rows.length > 0) {
+  const existingUser = await User.findOne({ username: "admin" }).select("_id").lean();
+  if (existingUser) {
     return;
   }
 
   const hash = await bcrypt.hash("admin12345", 12);
-  await pool.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", [
-    "admin",
-    hash,
-    "geraetewart"
-  ]);
+  await User.create({ username: "admin", passwordHash: hash, role: "geraetewart" });
   console.log("Seed user created: admin / admin12345");
 }
 
 async function start() {
   try {
-    await pool.query("SELECT 1");
+    await connectDatabase();
     await ensureAdminUser();
 
     app.listen(port, () => {
