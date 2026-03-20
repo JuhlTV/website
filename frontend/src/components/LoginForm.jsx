@@ -58,6 +58,7 @@ export default function LoginForm({ onLogin }) {
             autocomplete="username"
             aria-invalid={!!validationErrors.username}
             placeholder="z.B. admin"
+            disabled={loading}
             required
           />
           {validationErrors.username && (
@@ -77,6 +78,7 @@ export default function LoginForm({ onLogin }) {
             autocomplete="current-password"
             aria-invalid={!!validationErrors.password}
             placeholder="Passwort eingeben"
+            disabled={loading}
             required
           />
           {validationErrors.password && (
@@ -90,8 +92,8 @@ export default function LoginForm({ onLogin }) {
           </div>
         )}
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Anmeldung..." : "Anmelden"}
+        <button type="submit" disabled={loading} style={{ opacity: loading ? 0.7 : 1 }}>
+          {loading ? "⏳ Anmeldung läuft..." : "Anmelden"}
         </button>
       </form>
     </div>
