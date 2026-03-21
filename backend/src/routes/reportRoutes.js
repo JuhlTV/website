@@ -31,6 +31,47 @@ function normalizeRecipients(inputRecipients) {
   return [...new Set(sanitized)];
 }
 
+function buildPdfPayloadFromReport(report) {
+  const checks = (report.checks || []).map((check) => ({
+    item_label: check.itemLabel,
+    status: check.status,
+    comment_text: check.commentText
+  }));
+
+  const defects = (report.defects || []).map((defect) => ({
+    item_label: defect.itemLabel,
+    description_text: defect.descriptionText,
+    priority: defect.priority,
+    timestamp: defect.timestamp,
+    username: defect.username
+  }));
+
+  const pdfReport = {
+    created_at: report.createdAt,
+    vehicle_name: report.vehicleName,
+    username: report.username
+  };
+
+  return { report: pdfReport, checks, defects };
+}
+
+async function getOrCreateReportPdf(report) {
+  if (report.pdfFileName) {
+    try {
+      const pdfBuffer = await readPdfFile(report.pdfFileName);
+      return { pdfBuffer, fileName: report.pdfFileName };
+    } catch {
+      // If persisted file is missing, regenerate from report payload.
+    }
+  }
+
+  const pdfBuffer = await buildReportPdf(buildPdfPayloadFromReport(report));
+  const fileName = getPdfFileName(report.id);
+  await savePdfFile(fileName, pdfBuffer);
+  await updateReport(report.id, { pdfFileName: fileName });
+  return { pdfBuffer, fileName };
+}
+
 function canAccessReport(user, report) {
   return user.role === "geraetewart" || report.userId === user.id;
 }
@@ -216,6 +257,10 @@ router.get("/history", requireAuth, async (req, res) => {
 router.get("/:id/pdf", requireAuth, async (req, res) => {
   const reportId = req.params.id;
 
+  if (!reportId || typeof reportId !== "string") {
+    return res.status(400).json({ message: "Ungültige Bericht-ID" });
+  }
+
   try {
     const report = await findReportById(reportId);
 
@@ -227,46 +272,11 @@ router.get("/:id/pdf", requireAuth, async (req, res) => {
       return res.status(403).json({ message: "Kein Zugriff" });
     }
 
-    let pdf;
-
-    if (report.pdfFileName) {
-      try {
-        pdf = await readPdfFile(report.pdfFileName);
-      } catch {
-        pdf = null;
-      }
-    }
-
-    if (!pdf) {
-      const checks = (report.checks || []).map((check) => ({
-        item_label: check.itemLabel,
-        status: check.status,
-        comment_text: check.commentText
-      }));
-
-      const defects = (report.defects || []).map((defect) => ({
-        item_label: defect.itemLabel,
-        description_text: defect.descriptionText,
-        priority: defect.priority,
-        timestamp: defect.timestamp,
-        username: defect.username
-      }));
-
-      const pdfReport = {
-        created_at: report.createdAt,
-        vehicle_name: report.vehicleName,
-        username: report.username
-      };
-
-      pdf = await buildReportPdf({ report: pdfReport, checks, defects });
-      const pdfFileName = getPdfFileName(report.id);
-      await savePdfFile(pdfFileName, pdf);
-      await updateReport(report.id, { pdfFileName });
-    }
+    const { pdfBuffer } = await getOrCreateReportPdf(report);
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename=bericht-${reportId}.pdf`);
-    return res.send(pdf);
+    return res.send(pdfBuffer);
   } catch (error) {
     return res.status(500).json({ message: "PDF-Fehler", error: error.message });
   }
@@ -275,6 +285,10 @@ router.get("/:id/pdf", requireAuth, async (req, res) => {
 router.post("/:id/send-email", requireAuth, requireRole("geraetewart"), async (req, res) => {
   const reportId = req.params.id;
   const recipients = normalizeRecipients(req.body?.recipients);
+
+  if (!reportId || typeof reportId !== "string") {
+    return res.status(400).json({ message: "Ungültige Bericht-ID" });
+  }
 
   if (recipients.length === 0) {
     return res.status(400).json({ message: "Mindestens ein Empfänger erforderlich" });
@@ -292,48 +306,13 @@ router.post("/:id/send-email", requireAuth, requireRole("geraetewart"), async (r
       return res.status(404).json({ message: "Bericht nicht gefunden" });
     }
 
-    let pdf;
-
-    if (report.pdfFileName) {
-      try {
-        pdf = await readPdfFile(report.pdfFileName);
-      } catch {
-        pdf = null;
-      }
-    }
-
-    if (!pdf) {
-      const checks = (report.checks || []).map((check) => ({
-        item_label: check.itemLabel,
-        status: check.status,
-        comment_text: check.commentText
-      }));
-
-      const defects = (report.defects || []).map((defect) => ({
-        item_label: defect.itemLabel,
-        description_text: defect.descriptionText,
-        priority: defect.priority,
-        timestamp: defect.timestamp,
-        username: defect.username
-      }));
-
-      const pdfReport = {
-        created_at: report.createdAt,
-        vehicle_name: report.vehicleName,
-        username: report.username
-      };
-
-      pdf = await buildReportPdf({ report: pdfReport, checks, defects });
-      const pdfFileName = getPdfFileName(report.id);
-      await savePdfFile(pdfFileName, pdf);
-      await updateReport(report.id, { pdfFileName });
-    }
+    const { pdfBuffer } = await getOrCreateReportPdf(report);
 
     await sendReportEmail({
       recipients,
       subject: `Feuerwehr Bericht ${report.vehicleName} (${reportId})`,
       text: "Anbei der automatisch generierte Prüfbericht.",
-      pdfBuffer: pdf,
+      pdfBuffer,
       fileName: `bericht-${reportId}.pdf`
     });
 
