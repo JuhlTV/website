@@ -131,14 +131,11 @@ export default function ReportsList({ user, refreshToken }) {
   return (
     <div className="panel-stack">
       <div className="card">
-        <div className="section-head">
-          <h2>Berichte</h2>
-          <span className="badge role">Rolle: {user.role}</span>
+        <div className="card-header">Berichte</div>
+        <div className="section-head" style={{ marginTop: "0.8rem" }}>
+          <h2>Alle Einträge</h2>
+          <span className="badge role">Gerätewart</span>
         </div>
-
-        {user.role === "geraetewart" ? (
-          <div className="success-box">Gerätewart-Zugriff aktiv: Sie sehen alle Einträge.</div>
-        ) : null}
 
         {reportError ? <div className="error-box">{reportError}</div> : null}
 
@@ -176,10 +173,8 @@ export default function ReportsList({ user, refreshToken }) {
       </div>
 
       <div className="card">
-        <div className="section-head">
-          <h2>Mängelübersicht</h2>
-        </div>
-        {defectError ? <div className="error-box">{defectError}</div> : null}
+        <div className="card-header">Mängelübersicht</div>
+        {defectError ? <div className="error-box" style={{ marginTop: "0.8rem" }}>{defectError}</div> : null}
 
         <div className="inline-fields">
           <label>
@@ -241,10 +236,8 @@ export default function ReportsList({ user, refreshToken }) {
       </div>
 
       <div className="card">
-        <div className="section-head">
-          <h2>Fahrzeughistorie</h2>
-        </div>
-        {historyError ? <div className="error-box">{historyError}</div> : null}
+        <div className="card-header">Fahrzeughistorie</div>
+        {historyError ? <div className="error-box" style={{ marginTop: "0.8rem" }}>{historyError}</div> : null}
 
         <label>
           Fahrzeugfilter

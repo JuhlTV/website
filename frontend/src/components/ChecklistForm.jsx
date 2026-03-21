@@ -110,8 +110,9 @@ export default function ChecklistForm({ user, onReportCreated }) {
 
   return (
     <form className="card" onSubmit={submitChecklist}>
-      <div className="section-head">
-        <h2>Fahrzeugprüfung</h2>
+      <div className="card-header">Fahrzeugprüfung</div>
+      <div className="section-head" style={{ marginTop: "0.8rem" }}>
+        <h2>Prüfbogen</h2>
         <span className="badge">Prüfer: {user.role === "benutzer" ? "Gast" : user.username}</span>
       </div>
 

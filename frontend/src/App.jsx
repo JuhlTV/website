@@ -84,8 +84,9 @@ export default function App() {
       return (
         <div className="login-shell">
           <div className="card login-card">
-            <h1>Feuerwehr Checkliste System</h1>
-            <p>Zugriff wird vorbereitet...</p>
+            <div className="topbar-emblem" style={{ marginBottom: "0.8rem", width: 52, height: 52, fontSize: "0.7rem" }}>FW<br/>REL</div>
+            <h1>Feuerwehr Checkliste</h1>
+            <p style={{ margin: "0.3rem 0 1rem" }}>Zugriff wird vorbereitet...</p>
             <button type="button" onClick={() => setShowGeraetewartLogin(true)}>
               Gerätewart-Login öffnen
             </button>
@@ -101,8 +102,9 @@ export default function App() {
     return (
       <div className="login-shell">
         <div className="card login-card">
-          <h1>Feuerwehr Checkliste System</h1>
-          <p>Normaler Zugriff wird automatisch hergestellt.</p>
+          <div className="topbar-emblem" style={{ marginBottom: "0.8rem", width: 52, height: 52, fontSize: "0.7rem" }}>FW<br/>REL</div>
+          <h1>Feuerwehr Checkliste</h1>
+          <p style={{ margin: "0.3rem 0 1rem" }}>Normaler Zugriff wird automatisch hergestellt.</p>
           <button type="button" onClick={() => setShowGeraetewartLogin(true)}>
             Gerätewart-Login öffnen
           </button>
@@ -114,9 +116,12 @@ export default function App() {
   return (
     <div className={rootClass}>
       <header className="topbar">
-        <div>
-          <h1>Feuerwehr Checkliste System</h1>
-          <p>Digitale Prüfprozesse für die Gerätewarte</p>
+        <div className="topbar-brand">
+          <div className="topbar-emblem">FW<br/>REL</div>
+          <div>
+            <h1>Feuerwehr Checkliste</h1>
+            <p>Digitale Fahrzeugprüfung</p>
+          </div>
         </div>
 
         <div className="topbar-actions">
@@ -131,32 +136,36 @@ export default function App() {
               checked={darkMode}
               onChange={(e) => setDarkMode(e.target.checked)}
             />
-            <span>Dark Mode</span>
+            <span>Dark</span>
           </label>
-          <button type="button" onClick={handleLogout}>
-            Abmelden
-          </button>
+          {user.role === "geraetewart" ? (
+            <button type="button" className="btn-ghost" onClick={handleLogout}>
+              Abmelden
+            </button>
+          ) : null}
         </div>
       </header>
 
-      <main className="layout-grid">
-        <ChecklistForm
-          user={user}
-          onReportCreated={() => setRefreshToken((v) => v + 1)}
-        />
+      <div className="content-wrap">
+        <main className="layout-grid">
+          <ChecklistForm
+            user={user}
+            onReportCreated={() => setRefreshToken((v) => v + 1)}
+          />
 
-        {user.role === "geraetewart" ? (
-          <ReportsList user={user} refreshToken={refreshToken} />
-        ) : (
-          <section className="card">
-            <h2>Hinweis</h2>
-            <p>
-              Berichte, Mängelübersicht und Historie sind nur sichtbar, wenn Sie als Gerätewart
-              angemeldet sind.
-            </p>
-          </section>
-        )}
-      </main>
+          {user.role === "geraetewart" ? (
+            <ReportsList user={user} refreshToken={refreshToken} />
+          ) : (
+            <section className="card">
+              <div className="card-header">Hinweis</div>
+              <p style={{ color: "var(--muted)", fontSize: "0.9rem", marginTop: "0.5rem" }}>
+                Berichte, Mängelübersicht und Historie sind nur für Gerätewarte sichtbar.
+                Bitte oben rechts einloggen.
+              </p>
+            </section>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
