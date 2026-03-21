@@ -29,6 +29,12 @@ if (process.env.NODE_ENV !== "production") {
 const apiBaseUrl = `${appDomain}/api`;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const startedAtIso = new Date().toISOString();
+const buildCommit =
+  process.env.RAILWAY_GIT_COMMIT_SHA ||
+  process.env.VERCEL_GIT_COMMIT_SHA ||
+  process.env.COMMIT_SHA ||
+  "unknown";
 
 function resolveFrontendDistPath() {
   const candidates = [
@@ -54,6 +60,21 @@ function resolveFrontendDistPath() {
 const frontendDistPath = resolveFrontendDistPath();
 const frontendIndexPath = path.join(frontendDistPath, "index.html");
 
+function getVersionPayload() {
+  return {
+    ok: true,
+    service: "feuerwehr-checkliste-api",
+    commit: buildCommit,
+    startedAt: startedAtIso,
+    nodeVersion: process.version,
+    pid: process.pid,
+    cwd: process.cwd(),
+    staticPath: frontendDistPath,
+    staticIndexExists: fs.existsSync(frontendIndexPath),
+    now: new Date().toISOString()
+  };
+}
+
 app.use(
   cors({
     origin(origin, callback) {
@@ -73,13 +94,11 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/api/health", (req, res) => {
-  res.json({
-    ok: true,
-    service: "feuerwehr-checkliste-api",
-    staticPath: frontendDistPath,
-    staticIndexExists: fs.existsSync(frontendIndexPath),
-    commit: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA || null
-  });
+  res.json(getVersionPayload());
+});
+
+app.get("/api/version", (req, res) => {
+  res.json(getVersionPayload());
 });
 
 app.use("/api/auth", authRoutes);
