@@ -2,7 +2,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { requireAuth } from "../middleware/auth.js";
-import { findUserByUsername } from "../services/fileStore.js";
+import { findGeraetewartByPassword, findUserByUsername } from "../services/fileStore.js";
 
 const router = express.Router();
 
@@ -16,19 +16,26 @@ router.post("/register", async (req, res) => {
 router.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
-  if (!username || !password) {
-    return res.status(400).json({ message: "Benutzername und Passwort sind erforderlich" });
+  if (!password) {
+    return res.status(400).json({ message: "Passwort ist erforderlich" });
   }
 
   try {
-    const user = await findUserByUsername(username);
+    let user = null;
 
-    if (!user) {
-      return res.status(401).json({ message: "Login fehlgeschlagen" });
+    if (username && String(username).trim()) {
+      user = await findUserByUsername(String(username).trim());
+      if (user) {
+        const usernameMatch = await bcrypt.compare(password, user.passwordHash);
+        if (!usernameMatch) {
+          user = null;
+        }
+      }
+    } else {
+      user = await findGeraetewartByPassword(password);
     }
 
-    const match = await bcrypt.compare(password, user.passwordHash);
-    if (!match) {
+    if (!user) {
       return res.status(401).json({ message: "Login fehlgeschlagen" });
     }
 

@@ -2,7 +2,6 @@ import { useState } from "react";
 import { apiRequest } from "../api/client";
 
 export default function LoginForm({ onLogin }) {
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -10,7 +9,6 @@ export default function LoginForm({ onLogin }) {
 
   function validateForm() {
     const errors = {};
-    if (!username.trim()) errors.username = "Benutzername erforderlich";
     if (!password) errors.password = "Passwort erforderlich";
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -26,7 +24,7 @@ export default function LoginForm({ onLogin }) {
     try {
       const data = await apiRequest("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ password })
       });
 
       localStorage.setItem("token", data.token);
@@ -47,35 +45,15 @@ export default function LoginForm({ onLogin }) {
         <p>Digitale Fahrzeugpruefung fuer die Freiwillige Feuerwehr</p>
 
         <label>
-          Benutzername
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => {
-              setUsername(e.target.value);
-              setValidationErrors(prev => ({ ...prev, username: "" }));
-            }}
-            autocomplete="username"
-            aria-invalid={!!validationErrors.username}
-            placeholder="z.B. admin"
-            disabled={loading}
-            required
-          />
-          {validationErrors.username && (
-            <small style={{ color: "var(--danger)" }}>{validationErrors.username}</small>
-          )}
-        </label>
-
-        <label>
-          Passwort
+          Geraetewart-Passwort
           <input
             type="password"
             value={password}
             onChange={(e) => {
               setPassword(e.target.value);
-              setValidationErrors(prev => ({ ...prev, password: "" }));
+              setValidationErrors((prev) => ({ ...prev, password: "" }));
             }}
-            autocomplete="current-password"
+            autoComplete="current-password"
             aria-invalid={!!validationErrors.password}
             placeholder="Passwort eingeben"
             disabled={loading}

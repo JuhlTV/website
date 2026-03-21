@@ -110,6 +110,20 @@ export async function findUserByUsername(username) {
   return users.find((user) => user.username === username) || null;
 }
 
+export async function findGeraetewartByPassword(password) {
+  const users = await readUsers();
+  const candidates = users.filter((user) => user.role === "geraetewart");
+
+  for (const user of candidates) {
+    const match = await bcrypt.compare(password, user.passwordHash);
+    if (match) {
+      return user;
+    }
+  }
+
+  return null;
+}
+
 export async function createUser({ username, passwordHash, role = "benutzer" }) {
   const users = await readUsers();
   const exists = users.some((user) => user.username === username);

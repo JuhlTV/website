@@ -47,10 +47,11 @@ npm run dev
 Benutzer werden ausschliesslich per Script gesetzt (kein Register-Endpunkt):
 
 ```bash
-npm run access:set -w backend -- --username admin --password dein_sicheres_passwort --role geraetewart
+npm run access:set -w backend -- --password dein_sicheres_passwort --role geraetewart
 ```
 
 Rollen: `benutzer` oder `geraetewart`.
+Fuer `geraetewart` ist kein Username noetig (intern wird `geraetewart` verwendet).
 
 ## Railway Deployment (Kurz)
 

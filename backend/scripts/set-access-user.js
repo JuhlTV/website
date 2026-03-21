@@ -53,14 +53,29 @@ function parseArgs(argv) {
     args.role = positional[2];
   }
 
+  // npm workspace forwarding may pass: <password> <role>
+  if (
+    positional.length === 2
+    && ["benutzer", "geraetewart"].includes(positional[1])
+    && !argv.some((part) => part === "--username" || part === "--password")
+  ) {
+    args.username = "";
+    args.password = positional[0];
+    args.role = positional[1];
+  }
+
   return args;
 }
 
 async function run() {
-  const { username, password, role } = parseArgs(process.argv.slice(2));
+  const parsed = parseArgs(process.argv.slice(2));
+  const role = parsed.role;
+  const username = parsed.username || (role === "geraetewart" ? "geraetewart" : "");
+  const password = parsed.password;
 
   if (!username || !password) {
-    console.error("Usage: npm run access:set -- --username <name> --password <pass> [--role benutzer|geraetewart]");
+    console.error("Usage: npm run access:set -- --password <pass> [--role geraetewart] [--username <name>]");
+    console.error("Hinweis: Bei Rolle 'geraetewart' ist --username optional und wird auf 'geraetewart' gesetzt.");
     process.exit(1);
   }
 
