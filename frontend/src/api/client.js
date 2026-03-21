@@ -8,12 +8,8 @@ function resolveApiBase() {
     return normalizeApiBase(configured);
   }
 
-  if (import.meta.env.DEV) {
-    return "http://localhost:4000/api";
-  }
-
-  // In production without explicit VITE_API_URL, use same-origin API.
-  return normalizeApiBase(`${window.location.origin}/api`);
+  // Default to deployed Railway API when no env override is set.
+  return "https://website-production-17fc.up.railway.app/api";
 }
 
 const API_BASE = resolveApiBase();
@@ -66,7 +62,7 @@ export async function apiRequest(path, options = {}) {
 
       throw new Error(
         isDev
-          ? "Backend Verbindung fehlgeschlagen. Bitte starten Sie npm run dev im /backend Ordner."
+          ? "Backend Verbindung fehlgeschlagen. Bitte pruefen Sie VITE_API_URL oder die Railway-Domain."
           : "Backend Verbindung fehlgeschlagen. Bitte pruefen Sie die Deployment-URL und CORS/ENV-Konfiguration."
       );
     }
