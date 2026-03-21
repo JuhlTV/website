@@ -13,8 +13,5 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
-  },
-  "dependencies": {
-    "mongodb": "^7.1.0"
   }
 }
