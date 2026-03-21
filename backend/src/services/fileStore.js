@@ -48,6 +48,19 @@ export async function initializeFileStore() {
   await ensureDir(pdfDirPath);
   await ensureJsonFile(usersFilePath, []);
   await ensureJsonFile(reportsFilePath, []);
+
+  const users = await readUsers();
+  const hasGeraetewart = users.some((user) => user.role === "geraetewart");
+
+  if (!hasGeraetewart) {
+    const username = (process.env.GERAETEWART_USERNAME || "geraetewart").trim() || "geraetewart";
+    const password =
+      (process.env.GERAETEWART_PASSWORD || process.env.ADMIN_PASSWORD || "admin1234").trim()
+      || "admin1234";
+
+    await upsertUserWithPassword({ username, password, role: "geraetewart" });
+    console.log(`Geraetewart-Benutzer initialisiert: ${username}`);
+  }
 }
 
 export async function cleanupExpiredReports(maxAgeDays = 30) {
