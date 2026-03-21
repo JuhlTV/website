@@ -21,6 +21,11 @@ export default function ChecklistForm({ user, onReportCreated }) {
   const [success, setSuccess] = useState("");
   const successTimerRef = useRef(null);
 
+  const defectCount = useMemo(
+    () => checks.filter((c) => c.status === "defekt").length,
+    [checks]
+  );
+
   const selectedVehicle = useMemo(
     () => vehicles.find((v) => v.key === vehicleKey),
     [vehicles, vehicleKey]
@@ -211,7 +216,11 @@ export default function ChecklistForm({ user, onReportCreated }) {
       {success ? <div className="success-box">{success}</div> : null}
 
       <button type="submit" disabled={saving}>
-        {saving ? "Speichere..." : "Bericht speichern"}
+        {saving
+          ? "Speichere..."
+          : defectCount > 0
+          ? `Bericht speichern (${defectCount} Mangel${defectCount !== 1 ? "punkte" : "punkt"})`
+          : "Bericht speichern"}
       </button>
     </form>
   );

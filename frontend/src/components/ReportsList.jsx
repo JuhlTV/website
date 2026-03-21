@@ -14,6 +14,7 @@ export default function ReportsList({ user, refreshToken }) {
   const [defectError, setDefectError] = useState("");
   const [historyError, setHistoryError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [emailTarget, setEmailTarget] = useState(null); // { reportId, input, sending, error }
 
   useEffect(() => {
     async function loadVehicles() {
@@ -102,29 +103,29 @@ export default function ReportsList({ user, refreshToken }) {
   }
 
   async function sendEmail(reportId) {
-    const input = window.prompt("Empfänger (Komma-getrennt):", "geraetewart@example.org");
-    if (!input) {
-      return;
-    }
+    setEmailTarget({ reportId, input: "", sending: false, error: "", success: "" });
+  }
 
-    const recipients = input
+  async function submitEmail() {
+    if (!emailTarget) return;
+    const recipients = emailTarget.input
       .split(",")
       .map((x) => x.trim())
       .filter(Boolean);
-
     if (recipients.length === 0) {
-      setError("Keine gültigen Empfänger angegeben.");
+      setEmailTarget((prev) => ({ ...prev, error: "Bitte mindestens eine E-Mail-Adresse eingeben." }));
       return;
     }
-
+    setEmailTarget((prev) => ({ ...prev, sending: true, error: "" }));
     try {
-      await apiRequest(`/reports/${reportId}/send-email`, {
+      await apiRequest(`/reports/${emailTarget.reportId}/send-email`, {
         method: "POST",
         body: JSON.stringify({ recipients })
       });
-      window.alert("Bericht versendet.");
+      setEmailTarget((prev) => ({ ...prev, sending: false, success: "Bericht erfolgreich versendet." }));
+      setTimeout(() => setEmailTarget(null), 3000);
     } catch (err) {
-      setReportError(err.message);
+      setEmailTarget((prev) => ({ ...prev, sending: false, error: err.message }));
     }
   }
 
@@ -280,3 +281,32 @@ export default function ReportsList({ user, refreshToken }) {
     </div>
   );
 }
+
+        {emailTarget ? (
+          <div className="email-panel">
+            <div className="email-panel-head">
+              Bericht #{emailTarget.reportId} versenden
+              <button type="button" className="btn-ghost" style={{ padding: "0.2rem 0.5rem", fontSize: "0.78rem" }} onClick={() => setEmailTarget(null)}>✕</button>
+            </div>
+            <label>
+              Empfänger (Komma-getrennt)
+              <input
+                type="text"
+                value={emailTarget.input}
+                onChange={(e) => setEmailTarget((prev) => ({ ...prev, input: e.target.value }))}
+                placeholder="z.B. max@fw-rellingen.de, eva@fw-rellingen.de"
+                disabled={emailTarget.sending}
+              />
+            </label>
+            {emailTarget.error ? <div className="error-box">{emailTarget.error}</div> : null}
+            {emailTarget.success ? <div className="success-box">{emailTarget.success}</div> : null}
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button type="button" onClick={submitEmail} disabled={emailTarget.sending}>
+                {emailTarget.sending ? "Sende..." : "Versenden"}
+              </button>
+              <button type="button" className="btn-ghost" onClick={() => setEmailTarget(null)} disabled={emailTarget.sending}>
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        ) : null}

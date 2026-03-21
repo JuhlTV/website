@@ -42,11 +42,15 @@ export default function LoginForm({ onLogin, onBackToGuest }) {
   return (
     <div className="login-shell">
       <form className="card login-card" onSubmit={handleSubmit}>
-        <h1>Feuerwehr Checkliste System</h1>
-        <p>Digitale Fahrzeugprüfung für die Freiwillige Feuerwehr</p>
-
-        <p style={{ margin: "0.25rem 0 0.75rem" }}>
-          Gerätewart-Login: Zugriff auf alle Einträge (passwortgeschützt).
+        <div
+          className="topbar-emblem"
+          style={{ marginBottom: "0.8rem", width: 52, height: 52, fontSize: "0.7rem" }}
+        >
+          FW<br />REL
+        </div>
+        <h1>Gerätewart-Login</h1>
+        <p style={{ margin: "0.3rem 0 1rem" }}>
+          Passwortgeschützter Zugriff auf alle Einträge und Auswertungen.
         </p>
 
         {/* Hidden username input keeps password form autofill/accessibility happy. */}
@@ -96,9 +100,10 @@ export default function LoginForm({ onLogin, onBackToGuest }) {
             type="button"
             onClick={onBackToGuest}
             disabled={loading}
-            style={{ marginTop: "0.5rem" }}
+            className="btn-ghost"
+            style={{ marginTop: "0.5rem", display: "block", width: "100%" }}
           >
-            Zurück zum normalen Zugriff
+            Zurück (ohne Anmeldung)
           </button>
         ) : null}
       </form>

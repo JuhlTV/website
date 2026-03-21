@@ -614,6 +614,27 @@ button:disabled {
 }
 
 /* ── Responsive ───────────────────────────────────────────── */
+/* ── Email Panel ──────────────────────────────────────────── */
+.email-panel {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--fw-red);
+  border-radius: 3px;
+  padding: 0.9rem 1rem;
+  background: var(--surface-2);
+  margin: 0.6rem 0;
+}
+
+.email-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-head);
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 0.7rem;
+}
+
 @media (min-width: 960px) {
   .layout-grid {
     grid-template-columns: 1.2fr 1fr;
