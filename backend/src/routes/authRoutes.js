@@ -7,6 +7,15 @@ import { findGeraetewartByPassword, findUserByUsername } from "../services/fileS
 
 const router = express.Router();
 
+function getPasswordCandidates(input) {
+  const raw = String(input || "");
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === raw) {
+    return raw ? [raw] : [];
+  }
+  return [raw, trimmed];
+}
+
 router.post("/register", async (req, res) => {
   return res.status(403).json({
     message:
@@ -35,8 +44,9 @@ router.post("/guest", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   const { username, password } = req.body;
+  const passwordCandidates = getPasswordCandidates(password);
 
-  if (!password) {
+  if (passwordCandidates.length === 0) {
     return res.status(400).json({ message: "Passwort ist erforderlich" });
   }
 
@@ -46,17 +56,48 @@ router.post("/login", async (req, res) => {
     if (username && String(username).trim()) {
       user = await findUserByUsername(String(username).trim());
       if (user) {
-        const usernameMatch = await bcrypt.compare(password, user.passwordHash);
+        let usernameMatch = false;
+        for (const candidatePassword of passwordCandidates) {
+          // Support accidental whitespace in pasted passwords without breaking valid logins.
+          const match = await bcrypt.compare(candidatePassword, user.passwordHash);
+          if (match) {
+            usernameMatch = true;
+            break;
+          }
+        }
         if (!usernameMatch) {
           user = null;
         }
       }
     } else {
-      user = await findGeraetewartByPassword(password);
+      for (const candidatePassword of passwordCandidates) {
+        user = await findGeraetewartByPassword(candidatePassword);
+        if (user) {
+          break;
+        }
+      }
 
       if (!user) {
-        const envPassword = (process.env.GERAETEWART_PASSWORD || "").trim();
-        if (envPassword && password === envPassword) {
+        const envPassword =
+          (process.env.GERAETEWART_PASSWORD || process.env.ADMIN_PASSWORD || "").trim();
+        const envPasswordHash = (process.env.GERAETEWART_PASSWORD_HASH || "").trim();
+
+        const plainPasswordMatch =
+          Boolean(envPassword)
+          && passwordCandidates.some((candidatePassword) => candidatePassword === envPassword);
+
+        let hashPasswordMatch = false;
+        if (!plainPasswordMatch && envPasswordHash) {
+          for (const candidatePassword of passwordCandidates) {
+            const match = await bcrypt.compare(candidatePassword, envPasswordHash);
+            if (match) {
+              hashPasswordMatch = true;
+              break;
+            }
+          }
+        }
+
+        if (plainPasswordMatch || hashPasswordMatch) {
           user = {
             id: "geraetewart-env",
             username: (process.env.GERAETEWART_USERNAME || "geraetewart").trim() || "geraetewart",

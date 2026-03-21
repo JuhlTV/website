@@ -14,6 +14,17 @@ const app = express();
 const port = Number(process.env.PORT || 4000);
 const appDomain = (process.env.APP_DOMAIN || "https://website-production-17fc.up.railway.app").replace(/\/+$/, "");
 const frontendOrigin = (process.env.FRONTEND_ORIGIN || appDomain).replace(/\/+$/, "");
+const configuredOrigins = (process.env.FRONTEND_ORIGINS || "")
+  .split(",")
+  .map((value) => value.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+const allowedOrigins = new Set([frontendOrigin, appDomain, ...configuredOrigins]);
+
+if (process.env.NODE_ENV !== "production") {
+  allowedOrigins.add("http://localhost:5173");
+  allowedOrigins.add("http://127.0.0.1:5173");
+}
+
 const apiBaseUrl = `${appDomain}/api`;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,7 +32,18 @@ const frontendDistPath = path.resolve(__dirname, "../../frontend/dist");
 
 app.use(
   cors({
-    origin: frontendOrigin
+    origin(origin, callback) {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      const normalizedOrigin = origin.replace(/\/+$/, "");
+      if (allowedOrigins.has(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("CORS blocked for origin"), false);
+    }
   })
 );
 app.use(express.json({ limit: "2mb" }));
@@ -50,6 +72,7 @@ async function start() {
     console.log("Starting Feuerwehr Checkliste Backend...");
     console.log(`API Base: ${apiBaseUrl}`);
     console.log(`CORS Origin: ${frontendOrigin}`);
+    console.log(`CORS Allowed Origins: ${Array.from(allowedOrigins).join(", ")}`);
     console.log(`App Domain: ${appDomain}`);
 
     console.log("\nInitializing local file store...");
