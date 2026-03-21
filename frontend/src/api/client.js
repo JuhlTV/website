@@ -2,9 +2,26 @@ function normalizeApiBase(baseUrl) {
   return baseUrl.replace(/\/+$/, "");
 }
 
+function isLocalHostname(hostname) {
+  return hostname === "localhost" || hostname === "127.0.0.1";
+}
+
 function resolveApiBase() {
   const configured = (import.meta.env.VITE_API_URL || "").trim();
   if (configured) {
+    try {
+      const configuredUrl = new URL(configured);
+      const runningOnLocalhost = isLocalHostname(window.location.hostname);
+      const configuredPointsToLocalhost = isLocalHostname(configuredUrl.hostname);
+
+      // Ignore localhost API URLs when app is running on a deployed domain.
+      if (!runningOnLocalhost && configuredPointsToLocalhost) {
+        return "https://website-production-17fc.up.railway.app/api";
+      }
+    } catch {
+      // Keep backward compatibility if configured is a non-URL path-like value.
+    }
+
     return normalizeApiBase(configured);
   }
 
