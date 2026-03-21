@@ -56,16 +56,15 @@ app.use("/api/auth", authRoutes);
 app.use("/api/vehicles", vehicleRoutes);
 app.use("/api/reports", reportRoutes);
 
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(frontendDistPath));
+// Serve frontend build for all non-API routes (works in any NODE_ENV).
+app.use(express.static(frontendDistPath));
 
-  app.get("*", (req, res) => {
-    if (req.path.startsWith("/api/")) {
-      return res.status(404).json({ message: "API route not found" });
-    }
-    return res.sendFile(path.join(frontendDistPath, "index.html"));
-  });
-}
+app.get("*", (req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ message: "API route not found" });
+  }
+  return res.sendFile(path.join(frontendDistPath, "index.html"));
+});
 
 async function start() {
   try {
