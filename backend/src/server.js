@@ -32,6 +32,7 @@ const __dirname = path.dirname(__filename);
 
 function resolveFrontendDistPath() {
   const candidates = [
+    path.resolve(__dirname, "../public"),
     path.resolve(__dirname, "../../frontend/dist"),
     path.resolve(__dirname, "../frontend/dist"),
     path.resolve(process.cwd(), "frontend/dist"),
@@ -51,6 +52,7 @@ function resolveFrontendDistPath() {
 }
 
 const frontendDistPath = resolveFrontendDistPath();
+const frontendIndexPath = path.join(frontendDistPath, "index.html");
 
 app.use(
   cors({
@@ -71,7 +73,13 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/api/health", (req, res) => {
-  res.json({ ok: true, service: "feuerwehr-checkliste-api" });
+  res.json({
+    ok: true,
+    service: "feuerwehr-checkliste-api",
+    staticPath: frontendDistPath,
+    staticIndexExists: fs.existsSync(frontendIndexPath),
+    commit: process.env.RAILWAY_GIT_COMMIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA || null
+  });
 });
 
 app.use("/api/auth", authRoutes);
@@ -85,7 +93,7 @@ app.get("*", (req, res) => {
   if (req.path.startsWith("/api/")) {
     return res.status(404).json({ message: "API route not found" });
   }
-  return res.sendFile(path.join(frontendDistPath, "index.html"));
+  return res.sendFile(frontendIndexPath);
 });
 
 async function start() {
@@ -96,7 +104,7 @@ async function start() {
     console.log(`CORS Allowed Origins: ${Array.from(allowedOrigins).join(", ")}`);
     console.log(`App Domain: ${appDomain}`);
     console.log(`Frontend dist path: ${frontendDistPath}`);
-    console.log(`Frontend index exists: ${fs.existsSync(path.join(frontendDistPath, "index.html"))}`);
+    console.log(`Frontend index exists: ${fs.existsSync(frontendIndexPath)}`);
 
     console.log("\nInitializing local file store...");
     await initializeFileStore();
