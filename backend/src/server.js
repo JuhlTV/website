@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import authRoutes from "./routes/authRoutes.js";
@@ -28,7 +29,28 @@ if (process.env.NODE_ENV !== "production") {
 const apiBaseUrl = `${appDomain}/api`;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const frontendDistPath = path.resolve(__dirname, "../../frontend/dist");
+
+function resolveFrontendDistPath() {
+  const candidates = [
+    path.resolve(__dirname, "../../frontend/dist"),
+    path.resolve(__dirname, "../frontend/dist"),
+    path.resolve(process.cwd(), "frontend/dist"),
+    path.resolve(process.cwd(), "../frontend/dist"),
+    path.resolve(process.cwd(), "dist")
+  ];
+
+  for (const candidate of candidates) {
+    const indexPath = path.join(candidate, "index.html");
+    if (fs.existsSync(indexPath)) {
+      return candidate;
+    }
+  }
+
+  // Keep the default candidate so logs and sendFile errors still point to a deterministic path.
+  return candidates[0];
+}
+
+const frontendDistPath = resolveFrontendDistPath();
 
 app.use(
   cors({
@@ -73,6 +95,8 @@ async function start() {
     console.log(`CORS Origin: ${frontendOrigin}`);
     console.log(`CORS Allowed Origins: ${Array.from(allowedOrigins).join(", ")}`);
     console.log(`App Domain: ${appDomain}`);
+    console.log(`Frontend dist path: ${frontendDistPath}`);
+    console.log(`Frontend index exists: ${fs.existsSync(path.join(frontendDistPath, "index.html"))}`);
 
     console.log("\nInitializing local file store...");
     await initializeFileStore();
