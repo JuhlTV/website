@@ -148,7 +148,7 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/", requireAuth, async (req, res) => {
+router.get("/", requireAuth, requireRole("geraetewart"), async (req, res) => {
   try {
     const reports = (await listReportsByUser(req.user)).sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -168,7 +168,7 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/defects", requireAuth, async (req, res) => {
+router.get("/defects", requireAuth, requireRole("geraetewart"), async (req, res) => {
   const { priority, vehicleKey } = req.query;
 
   if (priority && !["niedrig", "mittel", "kritisch"].includes(String(priority))) {
@@ -221,7 +221,7 @@ router.get("/defects", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/history", requireAuth, async (req, res) => {
+router.get("/history", requireAuth, requireRole("geraetewart"), async (req, res) => {
   const { vehicleKey } = req.query;
 
   try {
