@@ -11,12 +11,14 @@ Moderne, mobile-first Webanwendung fuer die digitale Fahrzeugpruefung der Freiwi
 - PDF-Berichtserstellung mit Unterschriftsfeld
 - E-Mail-Versand des Berichts (SMTP, z. B. Gmail)
 - Dashboard mit Report-Uebersicht
+- Dateibasierter Betrieb ohne Datenbank (JSON + PDF im Backend)
+- Automatische Loeschung alter Berichte/PDFs nach 30 Tagen
 - Vorbereitet fuer Railway Deployment
 
 ## Projektstruktur
 
 - `frontend/` React + Vite App
-- `backend/` Express API + MongoDB + PDF + Mail
+- `backend/` Express API + file-based Storage + PDF + Mail
 
 ## Schnellstart lokal
 
@@ -29,7 +31,7 @@ npm install
 2. Backend-Umgebung konfigurieren:
 
 - Datei `backend/.env.example` nach `backend/.env` kopieren
-- Werte eintragen (MongoDB, JWT, SMTP)
+- Werte eintragen (JWT, SMTP)
 
 3. Entwicklungsmodus starten:
 
@@ -42,26 +44,25 @@ npm run dev
 
 ## Standardnutzer (Seed)
 
-Beim ersten Start wird ein Geraetewart erstellt, falls er nicht existiert:
+Benutzer werden ausschliesslich per Script gesetzt (kein Register-Endpunkt):
 
-- Benutzername: `admin`
-- Passwort: `admin12345`
-- Rolle: `geraetewart`
+```bash
+npm run access:set -w backend -- --username admin --password dein_sicheres_passwort --role geraetewart
+```
 
-Passwort nach dem ersten Login aendern.
+Rollen: `benutzer` oder `geraetewart`.
 
 ## Railway Deployment (Kurz)
 
-1. MongoDB-Service in Railway erstellen.
-2. App deployen (Node.js).
-3. Environment-Variablen aus `backend/.env.example` setzen.
-4. Build Command:
+1. App deployen (Node.js).
+2. Environment-Variablen aus `backend/.env.example` setzen.
+3. Build Command:
 
 ```bash
 npm install && npm run build
 ```
 
-5. Start Command:
+4. Start Command:
 
 ```bash
 npm run start
@@ -69,15 +70,13 @@ npm run start
 
 ## Railway Deployment (Empfohlen)
 
-1. Services im selben Railway-Projekt:
+1. Service im Railway-Projekt:
 
 - Service A: App (`website`)
-- Service B: MongoDB
 
 2. Im App-Service unter Variables setzen:
 
 - `NODE_ENV=production`
-- `MONGO_URL=<Railway Reference auf Mongo interne URL>`
 - `JWT_SECRET=<lange zufaellige Zeichenkette>`
 - `JWT_EXPIRES_IN=12h`
 - `FRONTEND_ORIGIN=https://website-production-17fc.up.railway.app`
@@ -91,8 +90,8 @@ npm run start
 3. Wichtig:
 
 - Kein `PORT` setzen (Railway setzt ihn automatisch).
-- Fuer Railway-Mongo `MONGO_URL` nutzen, nicht localhost.
-- Wenn `MONGO_URL` gesetzt ist, nutzt die App automatisch diese interne Verbindung.
+- Die App speichert Berichte/Benutzer lokal in `backend/storage`.
+- Alte Berichte und PDF-Dateien werden automatisch nach 30 Tagen geloescht.
 
 4. Build/Start:
 

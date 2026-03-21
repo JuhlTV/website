@@ -1,17 +1,24 @@
 import express from "express";
 import dayjs from "dayjs";
-import { mongoose } from "../db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { findVehicleByKey } from "../config/vehicles.js";
 import { validateChecklistPayload } from "../utils/validators.js";
 import { buildReportPdf } from "../services/pdfService.js";
 import { sendReportEmail } from "../services/mailService.js";
-import { Report } from "../models/Report.js";
+import {
+  createReport,
+  findReportById,
+  getPdfFileName,
+  listReportsByUser,
+  readPdfFile,
+  savePdfFile,
+  updateReport
+} from "../services/fileStore.js";
 
 const router = express.Router();
 
 function canAccessReport(user, report) {
-  return user.role === "geraetewart" || String(report.userId) === String(user.id);
+  return user.role === "geraetewart" || report.userId === user.id;
 }
 
 router.post("/", requireAuth, async (req, res) => {
@@ -46,16 +53,41 @@ router.post("/", requireAuth, async (req, res) => {
         username
       }));
 
-    const report = await Report.create({
+    const report = await createReport({
       userId: req.user.id,
       username,
       vehicleKey: vehicle.key,
       vehicleName: vehicle.name,
       checks: checksPayload,
-      defects: defectsPayload
+      defects: defectsPayload,
+      pdfFileName: null
     });
 
-    return res.status(201).json({ message: "Bericht gespeichert", reportId: String(report._id) });
+    const pdf = await buildReportPdf({
+      report: {
+        created_at: report.createdAt,
+        vehicle_name: report.vehicleName,
+        username: report.username
+      },
+      checks: checksPayload.map((check) => ({
+        item_label: check.itemLabel,
+        status: check.status,
+        comment_text: check.commentText
+      })),
+      defects: defectsPayload.map((defect) => ({
+        item_label: defect.itemLabel,
+        description_text: defect.descriptionText,
+        priority: defect.priority,
+        timestamp: defect.timestamp,
+        username: defect.username
+      }))
+    });
+
+    const pdfFileName = getPdfFileName(report.id);
+    await savePdfFile(pdfFileName, pdf);
+    await updateReport(report.id, { pdfFileName });
+
+    return res.status(201).json({ message: "Bericht gespeichert", reportId: report.id });
   } catch (error) {
     return res.status(500).json({ message: "Fehler beim Speichern", error: error.message });
   }
@@ -63,11 +95,12 @@ router.post("/", requireAuth, async (req, res) => {
 
 router.get("/", requireAuth, async (req, res) => {
   try {
-    const query = req.user.role === "geraetewart" ? {} : { userId: req.user.id };
-    const reports = await Report.find(query).sort({ createdAt: -1 }).lean();
+    const reports = (await listReportsByUser(req.user)).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
     const mapped = reports.map((report) => ({
-      id: String(report._id),
+      id: report.id,
       username: report.username,
       vehicle_key: report.vehicleKey,
       vehicle_name: report.vehicleName,
@@ -88,49 +121,46 @@ router.get("/defects", requireAuth, async (req, res) => {
   }
 
   try {
-    const match = {};
-    if (req.user.role !== "geraetewart") {
-      match.userId = new mongoose.Types.ObjectId(req.user.id);
-    }
-    if (vehicleKey) {
-      match.vehicleKey = String(vehicleKey);
-    }
+    const reports = await listReportsByUser(req.user);
+    const filteredReports = reports.filter(
+      (report) => !vehicleKey || report.vehicleKey === String(vehicleKey)
+    );
 
-    const pipeline = [{ $match: match }, { $unwind: "$defects" }];
-    if (priority) {
-      pipeline.push({ $match: { "defects.priority": String(priority) } });
-    }
+    const defects = [];
 
-    pipeline.push({
-      $facet: {
-        defects: [
-          { $sort: { "defects.timestamp": -1 } },
-          {
-            $project: {
-              _id: 0,
-              id: { $toString: "$defects._id" },
-              item_label: "$defects.itemLabel",
-              description_text: "$defects.descriptionText",
-              priority: "$defects.priority",
-              timestamp: "$defects.timestamp",
-              username: "$defects.username",
-              report_id: { $toString: "$_id" },
-              vehicle_key: "$vehicleKey",
-              vehicle_name: "$vehicleName",
-              report_created_at: "$createdAt"
-            }
-          }
-        ],
-        summary: [
-          { $group: { _id: "$defects.priority", total: { $sum: 1 } } },
-          { $project: { _id: 0, priority: "$_id", total: 1 } },
-          { $sort: { priority: 1 } }
-        ]
+    for (const report of filteredReports) {
+      for (const defect of report.defects || []) {
+        if (priority && defect.priority !== String(priority)) {
+          continue;
+        }
+
+        defects.push({
+          id: `${report.id}-${defect.itemKey}-${new Date(defect.timestamp).getTime()}`,
+          item_label: defect.itemLabel,
+          description_text: defect.descriptionText,
+          priority: defect.priority,
+          timestamp: defect.timestamp,
+          username: defect.username,
+          report_id: report.id,
+          vehicle_key: report.vehicleKey,
+          vehicle_name: report.vehicleName,
+          report_created_at: report.createdAt
+        });
       }
-    });
+    }
 
-    const [result] = await Report.aggregate(pipeline);
-    return res.json({ defects: result?.defects || [], summary: result?.summary || [] });
+    defects.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    const summaryMap = new Map();
+    for (const defect of defects) {
+      summaryMap.set(defect.priority, (summaryMap.get(defect.priority) || 0) + 1);
+    }
+
+    const summary = Array.from(summaryMap.entries())
+      .map(([priorityValue, total]) => ({ priority: priorityValue, total }))
+      .sort((a, b) => a.priority.localeCompare(b.priority));
+
+    return res.json({ defects, summary });
   } catch (error) {
     return res.status(500).json({ message: "Fehler beim Laden der Maengel", error: error.message });
   }
@@ -140,21 +170,16 @@ router.get("/history", requireAuth, async (req, res) => {
   const { vehicleKey } = req.query;
 
   try {
-    const query = {};
-    if (req.user.role !== "geraetewart") {
-      query.userId = req.user.id;
-    }
-    if (vehicleKey) {
-      query.vehicleKey = String(vehicleKey);
-    }
+    const reports = (await listReportsByUser(req.user))
+      .filter((report) => !vehicleKey || report.vehicleKey === String(vehicleKey))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-    const reports = await Report.find(query).sort({ createdAt: -1 }).lean();
     const history = reports.map((report) => {
       const checks = report.checks || [];
       const defects = report.defects || [];
 
       return {
-        id: String(report._id),
+        id: report.id,
         vehicle_key: report.vehicleKey,
         vehicle_name: report.vehicleName,
         username: report.username,
@@ -177,12 +202,8 @@ router.get("/history", requireAuth, async (req, res) => {
 router.get("/:id/pdf", requireAuth, async (req, res) => {
   const reportId = req.params.id;
 
-  if (!mongoose.Types.ObjectId.isValid(reportId)) {
-    return res.status(400).json({ message: "Ungueltige Bericht-ID" });
-  }
-
   try {
-    const report = await Report.findById(reportId).lean();
+    const report = await findReportById(reportId);
 
     if (!report) {
       return res.status(404).json({ message: "Bericht nicht gefunden" });
@@ -192,27 +213,42 @@ router.get("/:id/pdf", requireAuth, async (req, res) => {
       return res.status(403).json({ message: "Kein Zugriff" });
     }
 
-    const checks = (report.checks || []).map((check) => ({
-      item_label: check.itemLabel,
-      status: check.status,
-      comment_text: check.commentText
-    }));
+    let pdf;
 
-    const defects = (report.defects || []).map((defect) => ({
-      item_label: defect.itemLabel,
-      description_text: defect.descriptionText,
-      priority: defect.priority,
-      timestamp: defect.timestamp,
-      username: defect.username
-    }));
+    if (report.pdfFileName) {
+      try {
+        pdf = await readPdfFile(report.pdfFileName);
+      } catch {
+        pdf = null;
+      }
+    }
 
-    const pdfReport = {
-      created_at: report.createdAt,
-      vehicle_name: report.vehicleName,
-      username: report.username
-    };
+    if (!pdf) {
+      const checks = (report.checks || []).map((check) => ({
+        item_label: check.itemLabel,
+        status: check.status,
+        comment_text: check.commentText
+      }));
 
-    const pdf = await buildReportPdf({ report: pdfReport, checks, defects });
+      const defects = (report.defects || []).map((defect) => ({
+        item_label: defect.itemLabel,
+        description_text: defect.descriptionText,
+        priority: defect.priority,
+        timestamp: defect.timestamp,
+        username: defect.username
+      }));
+
+      const pdfReport = {
+        created_at: report.createdAt,
+        vehicle_name: report.vehicleName,
+        username: report.username
+      };
+
+      pdf = await buildReportPdf({ report: pdfReport, checks, defects });
+      const pdfFileName = getPdfFileName(report.id);
+      await savePdfFile(pdfFileName, pdf);
+      await updateReport(report.id, { pdfFileName });
+    }
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename=bericht-${reportId}.pdf`);
@@ -226,42 +262,53 @@ router.post("/:id/send-email", requireAuth, requireRole("geraetewart"), async (r
   const reportId = req.params.id;
   const { recipients } = req.body;
 
-  if (!mongoose.Types.ObjectId.isValid(reportId)) {
-    return res.status(400).json({ message: "Ungueltige Bericht-ID" });
-  }
-
   if (!Array.isArray(recipients) || recipients.length === 0) {
     return res.status(400).json({ message: "Mindestens ein Empfaenger erforderlich" });
   }
 
   try {
-    const report = await Report.findById(reportId).lean();
+    const report = await findReportById(reportId);
 
     if (!report) {
       return res.status(404).json({ message: "Bericht nicht gefunden" });
     }
 
-    const checks = (report.checks || []).map((check) => ({
-      item_label: check.itemLabel,
-      status: check.status,
-      comment_text: check.commentText
-    }));
+    let pdf;
 
-    const defects = (report.defects || []).map((defect) => ({
-      item_label: defect.itemLabel,
-      description_text: defect.descriptionText,
-      priority: defect.priority,
-      timestamp: defect.timestamp,
-      username: defect.username
-    }));
+    if (report.pdfFileName) {
+      try {
+        pdf = await readPdfFile(report.pdfFileName);
+      } catch {
+        pdf = null;
+      }
+    }
 
-    const pdfReport = {
-      created_at: report.createdAt,
-      vehicle_name: report.vehicleName,
-      username: report.username
-    };
+    if (!pdf) {
+      const checks = (report.checks || []).map((check) => ({
+        item_label: check.itemLabel,
+        status: check.status,
+        comment_text: check.commentText
+      }));
 
-    const pdf = await buildReportPdf({ report: pdfReport, checks, defects });
+      const defects = (report.defects || []).map((defect) => ({
+        item_label: defect.itemLabel,
+        description_text: defect.descriptionText,
+        priority: defect.priority,
+        timestamp: defect.timestamp,
+        username: defect.username
+      }));
+
+      const pdfReport = {
+        created_at: report.createdAt,
+        vehicle_name: report.vehicleName,
+        username: report.username
+      };
+
+      pdf = await buildReportPdf({ report: pdfReport, checks, defects });
+      const pdfFileName = getPdfFileName(report.id);
+      await savePdfFile(pdfFileName, pdf);
+      await updateReport(report.id, { pdfFileName });
+    }
 
     await sendReportEmail({
       recipients,

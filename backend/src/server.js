@@ -1,29 +1,30 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import bcrypt from "bcryptjs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { connectDatabase } from "./db.js";
-import { User } from "./models/User.js";
 import authRoutes from "./routes/authRoutes.js";
 import vehicleRoutes from "./routes/vehicleRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
+import { cleanupExpiredReports, initializeFileStore } from "./services/fileStore.js";
 
 dotenv.config();
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
+const appDomain = (process.env.APP_DOMAIN || "https://website-production-17fc.up.railway.app").replace(/\/+$/, "");
+const frontendOrigin = (process.env.FRONTEND_ORIGIN || appDomain).replace(/\/+$/, "");
+const apiBaseUrl = `${appDomain}/api`;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const frontendDistPath = path.resolve(__dirname, "../../frontend/dist");
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_ORIGIN || "http://localhost:5173"
+    origin: frontendOrigin
   })
 );
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "2mb" }));
 
 app.get("/api/health", (req, res) => {
   res.json({ ok: true, service: "feuerwehr-checkliste-api" });
@@ -44,31 +45,26 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-async function ensureAdminUser() {
-  const existingUser = await User.findOne({ username: "admin" }).select("_id").lean();
-  if (existingUser) {
-    return;
-  }
-
-  const hash = await bcrypt.hash("admin12345", 12);
-  await User.create({ username: "admin", passwordHash: hash, role: "geraetewart" });
-  console.log("Seed user created: admin / admin12345");
-}
-
 async function start() {
   try {
-    console.log("🚀 Starting Feuerwehr Checkliste Backend...");
-    console.log(`📡 API Base: http://localhost:${port}/api`);
-    console.log(`🌐 CORS Origin: ${process.env.FRONTEND_ORIGIN || "http://localhost:5173"}`);
-    
-    console.log("\n🔗 Connecting to MongoDB...");
-    await connectDatabase();
-    console.log("✅ MongoDB connected successfully");
-    console.log("\n👤 Setting up admin user...");
-    await ensureAdminUser();
+    console.log("Starting Feuerwehr Checkliste Backend...");
+    console.log(`API Base: ${apiBaseUrl}`);
+    console.log(`CORS Origin: ${frontendOrigin}`);
+    console.log(`App Domain: ${appDomain}`);
+
+    console.log("\nInitializing local file store...");
+    await initializeFileStore();
+    await cleanupExpiredReports(30);
+
+    const cleanupIntervalMs = 60 * 60 * 1000;
+    setInterval(() => {
+      cleanupExpiredReports(30).catch((error) => {
+        console.error("Cleanup failed:", error.message);
+      });
+    }, cleanupIntervalMs);
 
     app.listen(port, () => {
-      console.log(`\n✨ Server running on http://localhost:${port}`);
+      console.log(`\nServer listening on port ${port}`);
       console.log("\n📋 Available endpoints:");
       console.log(`   GET  /api/health`);
       console.log(`   POST /api/auth/register`);
@@ -78,7 +74,7 @@ async function start() {
       console.log(`   GET  /api/reports`);
       console.log(`   GET  /api/reports/defects`);
       console.log(`   GET  /api/reports/history`);
-      console.log(`\n🎯 Test: curl http://localhost:${port}/api/health\n`);
+      console.log(`\nTest URL: ${apiBaseUrl}/health\n`);
     });
   } catch (error) {
     console.error("Startup failed:", error.message);

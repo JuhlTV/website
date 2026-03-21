@@ -1,34 +1,16 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { User } from "../models/User.js";
 import { requireAuth } from "../middleware/auth.js";
+import { findUserByUsername } from "../services/fileStore.js";
 
 const router = express.Router();
 
 router.post("/register", async (req, res) => {
-  const { username, password } = req.body;
-
-  if (!username || !password) {
-    return res.status(400).json({ message: "Benutzername und Passwort sind erforderlich" });
-  }
-
-  if (password.length < 8) {
-    return res.status(400).json({ message: "Passwort muss mindestens 8 Zeichen haben" });
-  }
-
-  const safeRole = "benutzer";
-
-  try {
-    const hash = await bcrypt.hash(password, 12);
-    await User.create({ username, passwordHash: hash, role: safeRole });
-    return res.status(201).json({ message: "Benutzer erstellt" });
-  } catch (error) {
-    if (error?.code === 11000) {
-      return res.status(409).json({ message: "Benutzername existiert bereits" });
-    }
-    return res.status(500).json({ message: "Fehler beim Erstellen", error: error.message });
-  }
+  return res.status(403).json({
+    message:
+      "Registrierung ist deaktiviert. Benutzer und Passwoerter werden nur per Script gesetzt."
+  });
 });
 
 router.post("/login", async (req, res) => {
@@ -39,7 +21,7 @@ router.post("/login", async (req, res) => {
   }
 
   try {
-    const user = await User.findOne({ username }).lean();
+    const user = await findUserByUsername(username);
 
     if (!user) {
       return res.status(401).json({ message: "Login fehlgeschlagen" });
@@ -52,7 +34,7 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign(
       {
-        id: String(user._id),
+        id: String(user.id),
         username: user.username,
         role: user.role
       },
@@ -63,7 +45,7 @@ router.post("/login", async (req, res) => {
     return res.json({
       token,
       user: {
-        id: String(user._id),
+        id: String(user.id),
         username: user.username,
         role: user.role
       }
