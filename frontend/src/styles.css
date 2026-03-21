@@ -338,6 +338,54 @@ button:disabled {
   align-content: start;
 }
 
+.defect-item {
+  border-left: 4px solid var(--danger);
+}
+
+.history-item {
+  border-left: 4px solid var(--primary);
+}
+
+.badge.priority-kritisch {
+  background: rgba(180, 35, 24, 0.15);
+  color: var(--danger);
+  border-color: var(--danger);
+  font-weight: 700;
+}
+
+.badge.priority-mittel {
+  background: rgba(218, 165, 32, 0.2);
+  color: #7a5a00;
+  border-color: var(--primary);
+  font-weight: 600;
+}
+
+.app-root.dark .badge.priority-mittel {
+  color: var(--primary);
+}
+
+.badge.priority-niedrig {
+  background: rgba(23, 114, 69, 0.12);
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 0.4rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (min-width: 960px) {
   .layout-grid {
     grid-template-columns: 1.2fr 1fr;

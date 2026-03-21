@@ -142,7 +142,9 @@ export default function ReportsList({ user, refreshToken }) {
 
         {reportError ? <div className="error-box">{reportError}</div> : null}
 
-        {loading ? <div>Lade Berichte...</div> : null}
+        {loading ? (
+          <div><span className="loading-spinner" aria-hidden="true" />Lade Berichte...</div>
+        ) : null}
 
         {!loading && reports.length === 0 ? <div>Noch keine Berichte vorhanden.</div> : null}
 
@@ -228,7 +230,7 @@ export default function ReportsList({ user, refreshToken }) {
                 </p>
               </div>
               <div className="report-actions">
-                <span className="badge">{defect.priority}</span>
+                <span className={`badge priority-${defect.priority}`}>{defect.priority}</span>
                 <button type="button" onClick={() => downloadPdf(defect.report_id)}>
                   Bericht
                 </button>
@@ -274,9 +276,9 @@ export default function ReportsList({ user, refreshToken }) {
                 </p>
               </div>
               <div className="history-priority">
-                <span className="badge">kritisch: {item.defects_kritisch}</span>
-                <span className="badge">mittel: {item.defects_mittel}</span>
-                <span className="badge">niedrig: {item.defects_niedrig}</span>
+                <span className="badge priority-kritisch">kritisch: {item.defects_kritisch}</span>
+                <span className="badge priority-mittel">mittel: {item.defects_mittel}</span>
+                <span className="badge priority-niedrig">niedrig: {item.defects_niedrig}</span>
               </div>
             </article>
           ))}

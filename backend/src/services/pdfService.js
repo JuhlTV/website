@@ -1,10 +1,16 @@
 import PDFDocument from "pdfkit";
 import dayjs from "dayjs";
 
+const PRIORITY_COLORS = {
+  kritisch: "#b42318",
+  mittel: "#8a6200",
+  niedrig: "#177245"
+};
+
 export function buildReportPdf({ report, checks, defects }) {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ margin: 40, size: "A4" });
+      const doc = new PDFDocument({ margin: 40, size: "A4", bufferPages: true });
       const chunks = [];
 
       doc.on("data", (chunk) => chunks.push(chunk));
@@ -40,9 +46,13 @@ export function buildReportPdf({ report, checks, defects }) {
         doc.fontSize(10).text("Keine Mängel erfasst.");
       } else {
         defects.forEach((d, index) => {
+          const priorityColor = PRIORITY_COLORS[d.priority] || "#000000";
           doc
             .fontSize(10)
-            .text(`${index + 1}. ${d.item_label} | Priorität: ${d.priority}`)
+            .fillColor(priorityColor)
+            .text(`${index + 1}. ${d.item_label}`, { continued: true })
+            .text(`  | Priorität: ${d.priority}`)
+            .fillColor("#000000")
             .text(`   Beschreibung: ${d.description_text}`)
             .text(`   Zeit: ${dayjs(d.timestamp).format("DD.MM.YYYY HH:mm")}`)
             .text(`   Erfasst von: ${d.username}`)
@@ -54,6 +64,21 @@ export function buildReportPdf({ report, checks, defects }) {
       doc.text("Unterschrift:");
       doc.moveDown(0.8);
       doc.text("________________________________________");
+
+      // Add page numbers to all pages.
+      const totalPages = doc.bufferedPageRange().count;
+      for (let i = 0; i < totalPages; i++) {
+        doc.switchToPage(i);
+        doc
+          .fontSize(9)
+          .fillColor("#888888")
+          .text(
+            `Seite ${i + 1} von ${totalPages}`,
+            doc.page.margins.left,
+            doc.page.height - doc.page.margins.bottom - 12,
+            { align: "right", width: doc.page.width - doc.page.margins.left - doc.page.margins.right }
+          );
+      }
 
       doc.end();
     } catch (error) {

@@ -94,7 +94,7 @@ export default function ChecklistForm({ user, onReportCreated }) {
         body: JSON.stringify(payload)
       });
 
-      setSuccess(`Bericht erfolgreich gespeichert (ID ${data.reportId}).`);
+      setSuccess("Bericht erfolgreich gespeichert.");
       clearTimeout(successTimerRef.current);
       successTimerRef.current = setTimeout(() => setSuccess(""), 6000);
       if (selectedVehicle) {
