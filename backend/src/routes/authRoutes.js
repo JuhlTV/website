@@ -53,6 +53,17 @@ router.post("/login", async (req, res) => {
       }
     } else {
       user = await findGeraetewartByPassword(password);
+
+      if (!user) {
+        const envPassword = (process.env.GERAETEWART_PASSWORD || "").trim();
+        if (envPassword && password === envPassword) {
+          user = {
+            id: "geraetewart-env",
+            username: (process.env.GERAETEWART_USERNAME || "geraetewart").trim() || "geraetewart",
+            role: "geraetewart"
+          };
+        }
+      }
     }
 
     if (!user) {
