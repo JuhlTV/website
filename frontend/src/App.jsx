@@ -24,12 +24,19 @@ export default function App() {
 
   // Handle stale/expired tokens: auto-clear and re-bootstrap guest session.
   useEffect(() => {
+    let debounceTimer = null;
     function handleUnauthorized() {
-      setUser(null);
-      setShowGeraetewartLogin(false);
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        setUser(null);
+        setShowGeraetewartLogin(false);
+      }, 50);
     }
     window.addEventListener("auth:unauthorized", handleUnauthorized);
-    return () => window.removeEventListener("auth:unauthorized", handleUnauthorized);
+    return () => {
+      clearTimeout(debounceTimer);
+      window.removeEventListener("auth:unauthorized", handleUnauthorized);
+    };
   }, []);
 
   useEffect(() => {
