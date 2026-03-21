@@ -10,7 +10,9 @@ export default function ReportsList({ user, refreshToken }) {
   const [priorityFilter, setPriorityFilter] = useState("alle");
   const [defectVehicleFilter, setDefectVehicleFilter] = useState("alle");
   const [historyVehicleFilter, setHistoryVehicleFilter] = useState("alle");
-  const [error, setError] = useState("");
+  const [reportError, setReportError] = useState("");
+  const [defectError, setDefectError] = useState("");
+  const [historyError, setHistoryError] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,8 +20,8 @@ export default function ReportsList({ user, refreshToken }) {
       try {
         const data = await apiRequest("/vehicles");
         setVehicles(data.vehicles || []);
-      } catch (err) {
-        setError(err.message);
+      } catch {
+        // Non-critical; vehicle filter falls back to empty.
       }
     }
 
@@ -28,13 +30,13 @@ export default function ReportsList({ user, refreshToken }) {
 
   useEffect(() => {
     async function loadReports() {
-      setError("");
+      setReportError("");
       setLoading(true);
       try {
         const data = await apiRequest("/reports");
         setReports(data.reports);
       } catch (err) {
-        setError(err.message);
+        setReportError(err.message);
       } finally {
         setLoading(false);
       }
@@ -59,7 +61,7 @@ export default function ReportsList({ user, refreshToken }) {
         setDefects(data.defects || []);
         setDefectSummary(data.summary || []);
       } catch (err) {
-        setError(err.message);
+        setDefectError(err.message);
       }
     }
 
@@ -78,7 +80,7 @@ export default function ReportsList({ user, refreshToken }) {
         const data = await apiRequest(`/reports/history${query}`);
         setHistory(data.history || []);
       } catch (err) {
-        setError(err.message);
+        setHistoryError(err.message);
       }
     }
 
@@ -95,7 +97,7 @@ export default function ReportsList({ user, refreshToken }) {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err.message);
+      setReportError(err.message);
     }
   }
 
@@ -122,7 +124,7 @@ export default function ReportsList({ user, refreshToken }) {
       });
       window.alert("Bericht versendet.");
     } catch (err) {
-      setError(err.message);
+      setReportError(err.message);
     }
   }
 
@@ -138,7 +140,7 @@ export default function ReportsList({ user, refreshToken }) {
           <div className="success-box">Gerätewart-Zugriff aktiv: Sie sehen alle Einträge.</div>
         ) : null}
 
-        {error ? <div className="error-box">{error}</div> : null}
+        {reportError ? <div className="error-box">{reportError}</div> : null}
 
         {loading ? <div>Lade Berichte...</div> : null}
 
@@ -175,6 +177,7 @@ export default function ReportsList({ user, refreshToken }) {
         <div className="section-head">
           <h2>Mängelübersicht</h2>
         </div>
+        {defectError ? <div className="error-box">{defectError}</div> : null}
 
         <div className="inline-fields">
           <label>
@@ -239,6 +242,7 @@ export default function ReportsList({ user, refreshToken }) {
         <div className="section-head">
           <h2>Fahrzeughistorie</h2>
         </div>
+        {historyError ? <div className="error-box">{historyError}</div> : null}
 
         <label>
           Fahrzeugfilter

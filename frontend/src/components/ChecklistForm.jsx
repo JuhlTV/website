@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { apiRequest } from "../api/client";
 
 function initialChecksForVehicle(vehicle) {
@@ -19,6 +19,7 @@ export default function ChecklistForm({ user, onReportCreated }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const successTimerRef = useRef(null);
 
   const selectedVehicle = useMemo(
     () => vehicles.find((v) => v.key === vehicleKey),
@@ -94,6 +95,8 @@ export default function ChecklistForm({ user, onReportCreated }) {
       });
 
       setSuccess(`Bericht erfolgreich gespeichert (ID ${data.reportId}).`);
+      clearTimeout(successTimerRef.current);
+      successTimerRef.current = setTimeout(() => setSuccess(""), 6000);
       if (selectedVehicle) {
         setChecks(initialChecksForVehicle(selectedVehicle));
       }
@@ -109,7 +112,7 @@ export default function ChecklistForm({ user, onReportCreated }) {
     <form className="card" onSubmit={submitChecklist}>
       <div className="section-head">
         <h2>Fahrzeugprüfung</h2>
-        <span className="badge">Prüfer: {user.username}</span>
+        <span className="badge">Prüfer: {user.role === "benutzer" ? "Gast" : user.username}</span>
       </div>
 
       <label>
