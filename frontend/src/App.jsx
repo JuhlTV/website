@@ -70,7 +70,7 @@ export default function App() {
             <h1>Feuerwehr Checkliste System</h1>
             <p>Zugriff wird vorbereitet...</p>
             <button type="button" onClick={() => setShowGeraetewartLogin(true)}>
-              Geraetewart-Login oeffnen
+              Gerätewart-Login öffnen
             </button>
           </div>
         </div>
@@ -87,7 +87,7 @@ export default function App() {
           <h1>Feuerwehr Checkliste System</h1>
           <p>Normaler Zugriff wird automatisch hergestellt.</p>
           <button type="button" onClick={() => setShowGeraetewartLogin(true)}>
-            Geraetewart-Login oeffnen
+            Gerätewart-Login öffnen
           </button>
         </div>
       </div>
@@ -99,13 +99,13 @@ export default function App() {
       <header className="topbar">
         <div>
           <h1>Feuerwehr Checkliste System</h1>
-          <p>Digitale Pruefprozesse fuer die Geraetewarte</p>
+          <p>Digitale Prüfprozesse für die Gerätewarte</p>
         </div>
 
         <div className="topbar-actions">
           {user.role !== "geraetewart" ? (
             <button type="button" onClick={openGeraetewartLogin}>
-              Geraetewart-Login
+              Gerätewart-Login
             </button>
           ) : null}
           <label className="switch-wrap">
@@ -127,7 +127,18 @@ export default function App() {
           user={user}
           onReportCreated={() => setRefreshToken((v) => v + 1)}
         />
-        <ReportsList user={user} refreshToken={refreshToken} />
+
+        {user.role === "geraetewart" ? (
+          <ReportsList user={user} refreshToken={refreshToken} />
+        ) : (
+          <section className="card">
+            <h2>Hinweis</h2>
+            <p>
+              Berichte, Mängelübersicht und Historie sind nur sichtbar, wenn Sie als Gerätewart
+              angemeldet sind.
+            </p>
+          </section>
+        )}
       </main>
     </div>
   );

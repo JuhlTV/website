@@ -15,7 +15,7 @@ export function buildReportPdf({ report, checks, defects }) {
 
       doc.fontSize(11).text(`Datum: ${dayjs(report.created_at).format("DD.MM.YYYY HH:mm")}`);
       doc.text(`Fahrzeug: ${report.vehicle_name}`);
-      doc.text(`Pruefer: ${report.username}`);
+      doc.text(`Prüfer: ${report.username}`);
       doc.moveDown();
 
       doc.fontSize(14).text("Checkliste", { underline: true });
@@ -33,16 +33,16 @@ export function buildReportPdf({ report, checks, defects }) {
       });
 
       doc.moveDown();
-      doc.fontSize(14).text("Maengel", { underline: true });
+      doc.fontSize(14).text("Mängel", { underline: true });
       doc.moveDown(0.5);
 
       if (defects.length === 0) {
-        doc.fontSize(10).text("Keine Maengel erfasst.");
+        doc.fontSize(10).text("Keine Mängel erfasst.");
       } else {
         defects.forEach((d, index) => {
           doc
             .fontSize(10)
-            .text(`${index + 1}. ${d.item_label} | Prioritaet: ${d.priority}`)
+            .text(`${index + 1}. ${d.item_label} | Priorität: ${d.priority}`)
             .text(`   Beschreibung: ${d.description_text}`)
             .text(`   Zeit: ${dayjs(d.timestamp).format("DD.MM.YYYY HH:mm")}`)
             .text(`   Erfasst von: ${d.username}`)

@@ -17,6 +17,20 @@ import {
 
 const router = express.Router();
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeRecipients(inputRecipients) {
+  if (!Array.isArray(inputRecipients)) {
+    return [];
+  }
+
+  const sanitized = inputRecipients
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean);
+
+  return [...new Set(sanitized)];
+}
+
 function canAccessReport(user, report) {
   return user.role === "geraetewart" || report.userId === user.id;
 }
@@ -117,7 +131,7 @@ router.get("/defects", requireAuth, async (req, res) => {
   const { priority, vehicleKey } = req.query;
 
   if (priority && !["niedrig", "mittel", "kritisch"].includes(String(priority))) {
-    return res.status(400).json({ message: "Ungueltige Prioritaet" });
+    return res.status(400).json({ message: "Ungültige Priorität" });
   }
 
   try {
@@ -162,7 +176,7 @@ router.get("/defects", requireAuth, async (req, res) => {
 
     return res.json({ defects, summary });
   } catch (error) {
-    return res.status(500).json({ message: "Fehler beim Laden der Maengel", error: error.message });
+    return res.status(500).json({ message: "Fehler beim Laden der Mängel", error: error.message });
   }
 });
 
@@ -260,10 +274,15 @@ router.get("/:id/pdf", requireAuth, async (req, res) => {
 
 router.post("/:id/send-email", requireAuth, requireRole("geraetewart"), async (req, res) => {
   const reportId = req.params.id;
-  const { recipients } = req.body;
+  const recipients = normalizeRecipients(req.body?.recipients);
 
-  if (!Array.isArray(recipients) || recipients.length === 0) {
-    return res.status(400).json({ message: "Mindestens ein Empfaenger erforderlich" });
+  if (recipients.length === 0) {
+    return res.status(400).json({ message: "Mindestens ein Empfänger erforderlich" });
+  }
+
+  const invalidRecipients = recipients.filter((email) => !EMAIL_PATTERN.test(email));
+  if (invalidRecipients.length > 0) {
+    return res.status(400).json({ message: "Ungültige Empfänger-Adresse enthalten" });
   }
 
   try {
@@ -313,7 +332,7 @@ router.post("/:id/send-email", requireAuth, requireRole("geraetewart"), async (r
     await sendReportEmail({
       recipients,
       subject: `Feuerwehr Bericht ${report.vehicleName} (${reportId})`,
-      text: "Anbei der automatisch generierte Pruefbericht.",
+      text: "Anbei der automatisch generierte Prüfbericht.",
       pdfBuffer: pdf,
       fileName: `bericht-${reportId}.pdf`
     });

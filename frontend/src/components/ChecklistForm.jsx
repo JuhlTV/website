@@ -76,7 +76,7 @@ export default function ChecklistForm({ user, onReportCreated }) {
     );
 
     if (invalidDefect) {
-      setError(`Bitte Defektbeschreibung fuer "${invalidDefect.itemLabel}" eingeben.`);
+      setError(`Bitte Defektbeschreibung für "${invalidDefect.itemLabel}" eingeben.`);
       return;
     }
 
@@ -108,8 +108,8 @@ export default function ChecklistForm({ user, onReportCreated }) {
   return (
     <form className="card" onSubmit={submitChecklist}>
       <div className="section-head">
-        <h2>Fahrzeugpruefung</h2>
-        <span className="badge">Pruefer: {user.username}</span>
+        <h2>Fahrzeugprüfung</h2>
+        <span className="badge">Prüfer: {user.username}</span>
       </div>
 
       <label>
@@ -130,7 +130,7 @@ export default function ChecklistForm({ user, onReportCreated }) {
           {selectedVehicle.useCase ? <p>Einsatz: {selectedVehicle.useCase}</p> : null}
           {selectedVehicle.model ? <p>Modell: {selectedVehicle.model}</p> : null}
           {selectedVehicle.power ? <p>Leistung: {selectedVehicle.power}</p> : null}
-          {selectedVehicle.ladderHeight ? <p>Leiterhoehe: {selectedVehicle.ladderHeight}</p> : null}
+          {selectedVehicle.ladderHeight ? <p>Leiterhöhe: {selectedVehicle.ladderHeight}</p> : null}
           {selectedVehicle.vehicleInfo ? <p>Fahrzeug: {selectedVehicle.vehicleInfo}</p> : null}
         </div>
       ) : null}
@@ -187,7 +187,7 @@ export default function ChecklistForm({ user, onReportCreated }) {
                 </label>
 
                 <label>
-                  Prioritaet
+                  Priorität
                   <select
                     value={check.defectPriority}
                     onChange={(e) => updateCheck(index, { defectPriority: e.target.value })}

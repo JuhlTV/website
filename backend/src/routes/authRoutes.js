@@ -10,7 +10,7 @@ const router = express.Router();
 router.post("/register", async (req, res) => {
   return res.status(403).json({
     message:
-      "Registrierung ist deaktiviert. Benutzer und Passwoerter werden nur per Script gesetzt."
+      "Registrierung ist deaktiviert. Benutzer und Passwörter werden nur per Script gesetzt."
   });
 });
 

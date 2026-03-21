@@ -13,7 +13,7 @@ export function requireAuth(req, res, next) {
     req.user = payload;
     return next();
   } catch {
-    return res.status(401).json({ message: "Ungueltiges Token" });
+    return res.status(401).json({ message: "Ungültiges Token" });
   }
 }
 

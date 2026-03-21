@@ -30,6 +30,7 @@ function resolveApiBase() {
 }
 
 const API_BASE = resolveApiBase();
+const REQUEST_TIMEOUT_MS = 15000;
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
@@ -45,10 +46,16 @@ function getAuthHeaders() {
 export async function apiRequest(path, options = {}) {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const endpoint = `${API_BASE}${normalizedPath}`;
+  const hasExternalSignal = Boolean(options.signal);
+  const timeoutController = hasExternalSignal ? null : new AbortController();
+  const timeoutId = hasExternalSignal
+    ? null
+    : setTimeout(() => timeoutController.abort(), REQUEST_TIMEOUT_MS);
 
   try {
     const response = await fetch(endpoint, {
       ...options,
+      ...(timeoutController ? { signal: timeoutController.signal } : {}),
       headers: {
         ...getAuthHeaders(),
         ...(options.headers || {})
@@ -73,16 +80,24 @@ export async function apiRequest(path, options = {}) {
 
     return response.json();
   } catch (err) {
+    if (err?.name === "AbortError") {
+      throw new Error("Die Anfrage hat zu lange gedauert. Bitte erneut versuchen.");
+    }
+
     if (err instanceof TypeError && err.message === "Failed to fetch") {
       console.error("Backend nicht erreichbar:", endpoint);
       const isDev = Boolean(import.meta.env.DEV);
 
       throw new Error(
         isDev
-          ? "Backend Verbindung fehlgeschlagen. Bitte pruefen Sie VITE_API_URL oder die Railway-Domain."
-          : "Backend Verbindung fehlgeschlagen. Bitte pruefen Sie die Deployment-URL und CORS/ENV-Konfiguration."
+          ? "Backend Verbindung fehlgeschlagen. Bitte prüfen Sie VITE_API_URL oder die Railway-Domain."
+          : "Backend Verbindung fehlgeschlagen. Bitte prüfen Sie die Deployment-URL und CORS/ENV-Konfiguration."
       );
     }
     throw err;
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
   }
 }

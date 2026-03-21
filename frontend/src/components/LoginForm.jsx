@@ -31,7 +31,7 @@ export default function LoginForm({ onLogin, onBackToGuest }) {
       localStorage.setItem("user", JSON.stringify(data.user));
       onLogin(data.user);
     } catch (err) {
-      const fallback = "Anmeldung fehlgeschlagen. Bitte pruefen Sie das Geraetewart-Passwort.";
+      const fallback = "Anmeldung fehlgeschlagen. Bitte prüfen Sie das Gerätewart-Passwort.";
       setError(err.message || fallback);
       console.error("Login error:", err);
     } finally {
@@ -43,10 +43,10 @@ export default function LoginForm({ onLogin, onBackToGuest }) {
     <div className="login-shell">
       <form className="card login-card" onSubmit={handleSubmit}>
         <h1>Feuerwehr Checkliste System</h1>
-        <p>Digitale Fahrzeugpruefung fuer die Freiwillige Feuerwehr</p>
+        <p>Digitale Fahrzeugprüfung für die Freiwillige Feuerwehr</p>
 
         <p style={{ margin: "0.25rem 0 0.75rem" }}>
-          Geraetewart-Login: Zugriff auf alle Eintraege (passwortgeschuetzt).
+          Gerätewart-Login: Zugriff auf alle Einträge (passwortgeschützt).
         </p>
 
         {/* Hidden username input keeps password form autofill/accessibility happy. */}
@@ -88,7 +88,7 @@ export default function LoginForm({ onLogin, onBackToGuest }) {
         )}
 
         <button type="submit" disabled={loading} style={{ opacity: loading ? 0.7 : 1 }}>
-          {loading ? "⏳ Anmeldung läuft..." : "Als Geraetewart anmelden"}
+          {loading ? "⏳ Anmeldung läuft..." : "Als Gerätewart anmelden"}
         </button>
 
         {onBackToGuest ? (
@@ -98,7 +98,7 @@ export default function LoginForm({ onLogin, onBackToGuest }) {
             disabled={loading}
             style={{ marginTop: "0.5rem" }}
           >
-            Zurueck zum normalen Zugriff
+            Zurück zum normalen Zugriff
           </button>
         ) : null}
       </form>

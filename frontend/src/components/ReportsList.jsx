@@ -100,7 +100,7 @@ export default function ReportsList({ user, refreshToken }) {
   }
 
   async function sendEmail(reportId) {
-    const input = window.prompt("Empfaenger (Komma-getrennt):", "geraetewart@example.org");
+    const input = window.prompt("Empfänger (Komma-getrennt):", "geraetewart@example.org");
     if (!input) {
       return;
     }
@@ -111,7 +111,7 @@ export default function ReportsList({ user, refreshToken }) {
       .filter(Boolean);
 
     if (recipients.length === 0) {
-      setError("Keine gueltigen Empfaenger angegeben.");
+      setError("Keine gültigen Empfänger angegeben.");
       return;
     }
 
@@ -135,7 +135,7 @@ export default function ReportsList({ user, refreshToken }) {
         </div>
 
         {user.role === "geraetewart" ? (
-          <div className="success-box">Geraetewart-Zugriff aktiv: Sie sehen alle Eintraege.</div>
+          <div className="success-box">Gerätewart-Zugriff aktiv: Sie sehen alle Einträge.</div>
         ) : null}
 
         {error ? <div className="error-box">{error}</div> : null}
@@ -173,12 +173,12 @@ export default function ReportsList({ user, refreshToken }) {
 
       <div className="card">
         <div className="section-head">
-          <h2>Maengeluebersicht</h2>
+          <h2>Mängelübersicht</h2>
         </div>
 
         <div className="inline-fields">
           <label>
-            Prioritaet
+            Priorität
             <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
               <option value="alle">Alle</option>
               <option value="kritisch">Kritisch</option>
@@ -213,7 +213,7 @@ export default function ReportsList({ user, refreshToken }) {
         </div>
 
         <div className="reports-list">
-          {defects.length === 0 ? <div>Keine Maengel fuer den aktuellen Filter.</div> : null}
+          {defects.length === 0 ? <div>Keine Mängel für den aktuellen Filter.</div> : null}
           {defects.map((defect) => (
             <article key={defect.id} className="report-item defect-item">
               <div>
@@ -256,7 +256,7 @@ export default function ReportsList({ user, refreshToken }) {
         </label>
 
         <div className="reports-list">
-          {history.length === 0 ? <div>Keine Verlaufseintraege vorhanden.</div> : null}
+          {history.length === 0 ? <div>Keine Verlaufseinträge vorhanden.</div> : null}
           {history.map((item) => (
             <article key={item.id} className="report-item history-item">
               <div>
@@ -264,9 +264,9 @@ export default function ReportsList({ user, refreshToken }) {
                 <p>
                   Bericht {item.id} | {new Date(item.created_at).toLocaleString("de-DE")}
                 </p>
-                <p>Pruefer: {item.username}</p>
+                <p>Prüfer: {item.username}</p>
                 <p>
-                  Pruefpunkte: {item.total_checks} | Defekt markiert: {item.defect_checks}
+                  Prüfpunkte: {item.total_checks} | Defekt markiert: {item.defect_checks}
                 </p>
               </div>
               <div className="history-priority">
