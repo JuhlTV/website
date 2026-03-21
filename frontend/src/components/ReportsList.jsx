@@ -134,6 +134,10 @@ export default function ReportsList({ user, refreshToken }) {
           <span className="badge role">Rolle: {user.role}</span>
         </div>
 
+        {user.role === "geraetewart" ? (
+          <div className="success-box">Geraetewart-Zugriff aktiv: Sie sehen alle Eintraege.</div>
+        ) : null}
+
         {error ? <div className="error-box">{error}</div> : null}
 
         {loading ? <div>Lade Berichte...</div> : null}

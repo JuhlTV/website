@@ -1,6 +1,7 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { requireAuth } from "../middleware/auth.js";
 import { findGeraetewartByPassword, findUserByUsername } from "../services/fileStore.js";
 
@@ -11,6 +12,25 @@ router.post("/register", async (req, res) => {
     message:
       "Registrierung ist deaktiviert. Benutzer und Passwoerter werden nur per Script gesetzt."
   });
+});
+
+router.post("/guest", async (req, res) => {
+  try {
+    const guestId = crypto.randomUUID();
+    const guestUser = {
+      id: guestId,
+      username: `gast-${guestId.slice(0, 8)}`,
+      role: "benutzer"
+    };
+
+    const token = jwt.sign(guestUser, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || "12h"
+    });
+
+    return res.json({ token, user: guestUser });
+  } catch (error) {
+    return res.status(500).json({ message: "Gast-Login fehlgeschlagen", error: error.message });
+  }
 });
 
 router.post("/login", async (req, res) => {
