@@ -15,7 +15,7 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.18.0",
-    "nodemailer": "^6.9.16",
+    "nodemailer": "^8.0.3",
     "pdfkit": "^0.15.1"
   },
   "devDependencies": {

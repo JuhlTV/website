@@ -1,4 +1,22 @@
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+function normalizeApiBase(baseUrl) {
+  return baseUrl.replace(/\/+$/, "");
+}
+
+function resolveApiBase() {
+  const configured = (import.meta.env.VITE_API_URL || "").trim();
+  if (configured) {
+    return normalizeApiBase(configured);
+  }
+
+  if (import.meta.env.DEV) {
+    return "http://localhost:4000/api";
+  }
+
+  // In production without explicit VITE_API_URL, use same-origin API.
+  return normalizeApiBase(`${window.location.origin}/api`);
+}
+
+const API_BASE = resolveApiBase();
 
 function getAuthHeaders() {
   const token = localStorage.getItem("token");
@@ -12,8 +30,11 @@ function getAuthHeaders() {
 }
 
 export async function apiRequest(path, options = {}) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const endpoint = `${API_BASE}${normalizedPath}`;
+
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
+    const response = await fetch(endpoint, {
       ...options,
       headers: {
         ...getAuthHeaders(),
@@ -40,9 +61,13 @@ export async function apiRequest(path, options = {}) {
     return response.json();
   } catch (err) {
     if (err instanceof TypeError && err.message === "Failed to fetch") {
-      console.error("Backend nicht erreichbar:", `${API_BASE}${path}`);
+      console.error("Backend nicht erreichbar:", endpoint);
+      const isDev = Boolean(import.meta.env.DEV);
+
       throw new Error(
-        "Backend Verbindung fehlgeschlagen. Bitte starten Sie npm run dev im /backend Ordner."
+        isDev
+          ? "Backend Verbindung fehlgeschlagen. Bitte starten Sie npm run dev im /backend Ordner."
+          : "Backend Verbindung fehlgeschlagen. Bitte pruefen Sie die Deployment-URL und CORS/ENV-Konfiguration."
       );
     }
     throw err;

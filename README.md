@@ -80,7 +80,7 @@ npm run start
 - `MONGO_URL=<Railway Reference auf Mongo interne URL>`
 - `JWT_SECRET=<lange zufaellige Zeichenkette>`
 - `JWT_EXPIRES_IN=12h`
-- `FRONTEND_ORIGIN=https://<deine-app-domain>`
+- `FRONTEND_ORIGIN=https://website-production-17fc.up.railway.app`
 - `SMTP_HOST=smtp.gmail.com`
 - `SMTP_PORT=587`
 - `SMTP_SECURE=false`
