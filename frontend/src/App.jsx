@@ -22,6 +22,16 @@ export default function App() {
 
   const rootClass = useMemo(() => (darkMode ? "app-root dark" : "app-root"), [darkMode]);
 
+  // Handle stale/expired tokens: auto-clear and re-bootstrap guest session.
+  useEffect(() => {
+    function handleUnauthorized() {
+      setUser(null);
+      setShowGeraetewartLogin(false);
+    }
+    window.addEventListener("auth:unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("auth:unauthorized", handleUnauthorized);
+  }, []);
+
   useEffect(() => {
     if (user || showGeraetewartLogin || guestBootstrapping) {
       return;

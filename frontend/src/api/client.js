@@ -63,6 +63,13 @@ export async function apiRequest(path, options = {}) {
     });
 
     if (!response.ok) {
+      // Clear stale token and re-bootstrap guest session automatically.
+      if (response.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.dispatchEvent(new Event("auth:unauthorized"));
+      }
+
       let message = "Unbekannter Fehler";
       try {
         const data = await response.json();
