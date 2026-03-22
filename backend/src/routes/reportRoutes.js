@@ -1,6 +1,7 @@
 import express from "express";
 import dayjs from "dayjs";
 import { requireAuth, requireRole } from "../middleware/auth.js";
+import { createRateLimiter } from "../middleware/rateLimit.js";
 import { findVehicleByKey } from "../config/vehicles.js";
 import { validateChecklistPayload } from "../utils/validators.js";
 import { buildReportPdf } from "../services/pdfService.js";
@@ -16,6 +17,22 @@ import {
 } from "../services/fileStore.js";
 
 const router = express.Router();
+
+const reportCreateLimiter = createRateLimiter({
+  windowMs: Number(process.env.REPORT_CREATE_RATE_LIMIT_WINDOW_MS || 60_000),
+  max: Number(process.env.REPORT_CREATE_RATE_LIMIT_MAX || 20),
+  message: "Zu viele Berichte in kurzer Zeit. Bitte kurz warten.",
+  keyPrefix: "report-create",
+  keyGenerator: (req) => req.user?.id || req.user?.username || req.ip
+});
+
+const reportEmailLimiter = createRateLimiter({
+  windowMs: Number(process.env.REPORT_EMAIL_RATE_LIMIT_WINDOW_MS || 60_000),
+  max: Number(process.env.REPORT_EMAIL_RATE_LIMIT_MAX || 6),
+  message: "Zu viele E-Mail-Versuche in kurzer Zeit. Bitte kurz warten.",
+  keyPrefix: "report-email",
+  keyGenerator: (req) => req.user?.id || req.user?.username || req.ip
+});
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -108,7 +125,7 @@ function validateChecksAgainstVehicle(checks, vehicle) {
   return null;
 }
 
-router.post("/", requireAuth, async (req, res) => {
+router.post("/", requireAuth, reportCreateLimiter, async (req, res) => {
   const validationError = validateChecklistPayload(req.body);
   if (validationError) {
     return res.status(400).json({ message: validationError });
@@ -320,44 +337,50 @@ router.get("/:id/pdf", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/:id/send-email", requireAuth, requireRole("geraetewart"), async (req, res) => {
-  const reportId = req.params.id;
-  const recipients = normalizeRecipients(req.body?.recipients);
+router.post(
+  "/:id/send-email",
+  requireAuth,
+  requireRole("geraetewart"),
+  reportEmailLimiter,
+  async (req, res) => {
+    const reportId = req.params.id;
+    const recipients = normalizeRecipients(req.body?.recipients);
 
-  if (!reportId || typeof reportId !== "string") {
-    return res.status(400).json({ message: "Ungültige Bericht-ID" });
-  }
-
-  if (recipients.length === 0) {
-    return res.status(400).json({ message: "Mindestens ein Empfänger erforderlich" });
-  }
-
-  const invalidRecipients = recipients.filter((email) => !EMAIL_PATTERN.test(email));
-  if (invalidRecipients.length > 0) {
-    return res.status(400).json({ message: "Ungültige Empfänger-Adresse enthalten" });
-  }
-
-  try {
-    const report = await findReportById(reportId);
-
-    if (!report) {
-      return res.status(404).json({ message: "Bericht nicht gefunden" });
+    if (!reportId || typeof reportId !== "string") {
+      return res.status(400).json({ message: "Ungültige Bericht-ID" });
     }
 
-    const { pdfBuffer } = await getOrCreateReportPdf(report);
+    if (recipients.length === 0) {
+      return res.status(400).json({ message: "Mindestens ein Empfänger erforderlich" });
+    }
 
-    await sendReportEmail({
-      recipients,
-      subject: `Feuerwehr Bericht ${report.vehicleName} (${reportId})`,
-      text: "Anbei der automatisch generierte Prüfbericht.",
-      pdfBuffer,
-      fileName: `bericht-${reportId}.pdf`
-    });
+    const invalidRecipients = recipients.filter((email) => !EMAIL_PATTERN.test(email));
+    if (invalidRecipients.length > 0) {
+      return res.status(400).json({ message: "Ungültige Empfänger-Adresse enthalten" });
+    }
 
-    return res.json({ message: "Bericht erfolgreich versendet" });
-  } catch (error) {
-    return res.status(500).json({ message: "E-Mail-Versand fehlgeschlagen", error: error.message });
+    try {
+      const report = await findReportById(reportId);
+
+      if (!report) {
+        return res.status(404).json({ message: "Bericht nicht gefunden" });
+      }
+
+      const { pdfBuffer } = await getOrCreateReportPdf(report);
+
+      await sendReportEmail({
+        recipients,
+        subject: `Feuerwehr Bericht ${report.vehicleName} (${reportId})`,
+        text: "Anbei der automatisch generierte Prüfbericht.",
+        pdfBuffer,
+        fileName: `bericht-${reportId}.pdf`
+      });
+
+      return res.json({ message: "Bericht erfolgreich versendet" });
+    } catch (error) {
+      return res.status(500).json({ message: "E-Mail-Versand fehlgeschlagen", error: error.message });
+    }
   }
-});
+);
 
 export default router;

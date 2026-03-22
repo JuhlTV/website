@@ -3,9 +3,17 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { requireAuth } from "../middleware/auth.js";
+import { createRateLimiter } from "../middleware/rateLimit.js";
 import { findGeraetewartByPassword, findUserByUsername } from "../services/fileStore.js";
 
 const router = express.Router();
+
+const loginLimiter = createRateLimiter({
+  windowMs: Number(process.env.LOGIN_RATE_LIMIT_WINDOW_MS || 60_000),
+  max: Number(process.env.LOGIN_RATE_LIMIT_MAX || 10),
+  message: "Zu viele Login-Versuche. Bitte kurz warten.",
+  keyPrefix: "login"
+});
 
 function getPasswordCandidates(input) {
   const raw = String(input || "");
@@ -42,7 +50,7 @@ router.post("/guest", async (req, res) => {
   }
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login", loginLimiter, async (req, res) => {
   const { username, password } = req.body;
   const passwordCandidates = getPasswordCandidates(password);
 
