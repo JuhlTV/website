@@ -204,22 +204,26 @@ export default function App() {
 
       <div className="content-wrap">
         <main className="layout-grid">
-          <ChecklistForm
-            user={user}
-            onReportCreated={() => setRefreshToken((v) => v + 1)}
-          />
+          <section className="layout-zone vehicle-bay-panel">
+            <ChecklistForm
+              user={user}
+              onReportCreated={() => setRefreshToken((v) => v + 1)}
+            />
+          </section>
 
-          {user.role === "geraetewart" ? (
-            <ReportsList user={user} refreshToken={refreshToken} />
-          ) : (
-            <section className="card">
-              <div className="card-header">Hinweis</div>
-              <p style={{ color: "var(--muted)", fontSize: "0.9rem", marginTop: "0.5rem" }}>
-                Berichte, Mängelübersicht und Historie sind nur für Gerätewarte sichtbar.
-                Bitte oben rechts einloggen.
-              </p>
-            </section>
-          )}
+          <section className="layout-zone operator-bay-panel">
+            {user.role === "geraetewart" ? (
+              <ReportsList user={user} refreshToken={refreshToken} />
+            ) : (
+              <section className="card">
+                <div className="card-header">Hinweis</div>
+                <p style={{ color: "var(--muted)", fontSize: "0.9rem", marginTop: "0.5rem" }}>
+                  Berichte, Mängelübersicht und Historie sind nur für Gerätewarte sichtbar.
+                  Bitte oben rechts einloggen.
+                </p>
+              </section>
+            )}
+          </section>
         </main>
       </div>
     </div>

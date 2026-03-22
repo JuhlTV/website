@@ -263,6 +263,115 @@ p {
   grid-template-columns: 1fr;
 }
 
+.layout-zone {
+  position: relative;
+}
+
+.vehicle-bay-panel,
+.operator-bay-panel {
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 0.35rem;
+}
+
+.vehicle-bay-panel {
+  border-color: rgba(193, 0, 31, 0.3);
+  background:
+    linear-gradient(180deg, rgba(193, 0, 31, 0.08), rgba(193, 0, 31, 0.02)),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 180, 0, 0.1) 0,
+      rgba(255, 180, 0, 0.1) 10px,
+      transparent 10px,
+      transparent 22px
+    );
+}
+
+.operator-bay-panel {
+  border-color: rgba(26, 26, 26, 0.25);
+  background:
+    linear-gradient(180deg, rgba(26, 26, 26, 0.06), rgba(26, 26, 26, 0.02)),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(0, 0, 0, 0.06) 0,
+      rgba(0, 0, 0, 0.06) 2px,
+      transparent 2px,
+      transparent 8px
+    );
+}
+
+.vehicle-bay-panel::before,
+.operator-bay-panel::before {
+  position: absolute;
+  top: -0.55rem;
+  left: 0.8rem;
+  border-radius: 2px;
+  padding: 0.14rem 0.42rem;
+  font-family: var(--font-head);
+  font-size: 0.62rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.vehicle-bay-panel::before {
+  content: "Fahrzeughalle";
+  background: #c1001f;
+  color: #fff;
+}
+
+.operator-bay-panel::before {
+  content: "Leitstelle";
+  background: #1f1f1f;
+  color: #f2f2f2;
+}
+
+.vehicle-bay-panel .card,
+.operator-bay-panel .card {
+  margin: 0;
+}
+
+.vehicle-bay-panel .card {
+  border-color: rgba(193, 0, 31, 0.36);
+}
+
+.operator-bay-panel .card {
+  border-color: rgba(26, 26, 26, 0.28);
+}
+
+.app-root.dark .vehicle-bay-panel {
+  border-color: rgba(255, 107, 107, 0.3);
+  background:
+    linear-gradient(180deg, rgba(193, 0, 31, 0.2), rgba(193, 0, 31, 0.07)),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 180, 0, 0.14) 0,
+      rgba(255, 180, 0, 0.14) 10px,
+      transparent 10px,
+      transparent 22px
+    );
+}
+
+.app-root.dark .operator-bay-panel {
+  border-color: rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(16, 16, 16, 0.44), rgba(16, 16, 16, 0.2)),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.06) 0,
+      rgba(255, 255, 255, 0.06) 2px,
+      transparent 2px,
+      transparent 8px
+    );
+}
+
+.app-root.dark .operator-bay-panel::before {
+  background: #2e2e2e;
+}
+
+.app-root.dark .operator-bay-panel .card {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
 .panel-stack {
   display: grid;
   gap: 1.2rem;
@@ -1683,6 +1792,11 @@ button:disabled {
     grid-template-columns: 1.2fr 1fr;
   }
 
+  .vehicle-bay-panel,
+  .operator-bay-panel {
+    padding: 0.55rem;
+  }
+
   .inline-fields {
     grid-template-columns: 200px 1fr;
   }
@@ -1742,6 +1856,17 @@ button:disabled {
   .saved-filter-action,
   .saved-filter-delete {
     flex: 0 0 auto;
+  }
+
+  .vehicle-bay-panel,
+  .operator-bay-panel {
+    padding-top: 0.55rem;
+  }
+
+  .vehicle-bay-panel::before,
+  .operator-bay-panel::before {
+    left: 0.6rem;
+    top: -0.48rem;
   }
 
   .resolve-snackbar {
