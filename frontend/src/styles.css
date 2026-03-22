@@ -45,7 +45,9 @@
 body {
   margin: 0;
   font-family: var(--font-body);
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 20% -10%, rgba(193, 0, 31, 0.08), transparent 36%),
+    var(--bg);
   color: var(--text);
   min-height: 100vh;
   font-size: 15px;
@@ -90,8 +92,16 @@ p {
 
 .app-root {
   min-height: 100vh;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 85% -10%, rgba(193, 0, 31, 0.09), transparent 38%),
+    var(--bg);
   transition: background-color 220ms ease;
+}
+
+.app-root.dark {
+  background:
+    radial-gradient(circle at 82% -10%, rgba(193, 0, 31, 0.2), transparent 35%),
+    var(--bg);
 }
 
 /* ── Topbar / Header ──────────────────────────────────────── */
@@ -102,7 +112,7 @@ p {
   gap: 1rem;
   padding: 0 1.2rem;
   height: 64px;
-  background: var(--fw-nav);
+  background: linear-gradient(90deg, #111111 0%, #1a1a1a 55%, #141414 100%);
   box-shadow: 0 2px 6px rgba(0,0,0,0.5);
   position: sticky;
   top: 0;
@@ -177,6 +187,17 @@ p {
   color: #fff !important;
 }
 
+.app-root.dark .btn-ghost {
+  border-color: #666 !important;
+  color: #e6e6e6 !important;
+}
+
+.app-root.dark .btn-ghost:hover {
+  border-color: #ff6b6b !important;
+  color: #fff !important;
+  background: rgba(193, 0, 31, 0.18) !important;
+}
+
 /* ── Main Content ─────────────────────────────────────────── */
 .content-wrap {
   max-width: 1280px;
@@ -202,6 +223,15 @@ p {
   padding: 1.2rem;
   background: var(--surface);
   box-shadow: var(--shadow);
+  transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.card:hover {
+  border-color: #bfbfbf;
+}
+
+.app-root.dark .card:hover {
+  border-color: #525252;
 }
 
 .card-header {
@@ -608,6 +638,15 @@ button:disabled {
   gap: 0.8rem;
   flex-wrap: wrap;
   background: var(--surface);
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+
+.report-item:hover {
+  border-color: #b5b5b5;
+}
+
+.app-root.dark .report-item:hover {
+  border-color: #555555;
 }
 
 .report-item strong {
@@ -639,6 +678,10 @@ button:disabled {
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
 }
 
+.dashboard-grid-main {
+  margin-top: 0.8rem;
+}
+
 .dashboard-kpi {
   border: 1px solid var(--border);
   border-left: 4px solid var(--fw-red);
@@ -647,6 +690,7 @@ button:disabled {
   padding: 0.65rem 0.75rem;
   display: grid;
   gap: 0.2rem;
+  min-height: 88px;
 }
 
 .dashboard-kpi strong {
@@ -763,6 +807,19 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.quick-actions-compact {
+  margin-bottom: 0.7rem;
+}
+
+.quick-actions-compact .btn-ghost {
+  padding: 0.42rem 0.72rem;
+  font-size: 0.77rem;
+}
+
+.defect-filter-grid {
+  align-items: end;
 }
 
 .history-priority {
@@ -890,5 +947,32 @@ button:disabled {
 
   .content-wrap {
     padding: 1.5rem 2rem;
+  }
+}
+
+@media (max-width: 959px) {
+  .topbar {
+    height: auto;
+    padding: 0.65rem 1rem;
+    flex-wrap: wrap;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .quick-actions-compact {
+    position: sticky;
+    top: 72px;
+    z-index: 15;
+    background: var(--surface);
+    padding: 0.45rem 0;
+  }
+
+  .quick-actions-compact .btn-ghost {
+    width: 100%;
+    text-align: center;
   }
 }

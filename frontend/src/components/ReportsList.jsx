@@ -231,7 +231,7 @@ export default function ReportsList({ user, refreshToken }) {
     <div className="panel-stack">
       <div className="card">
         <div className="card-header">Gerätewart Übersicht</div>
-        <div className="dashboard-grid" style={{ marginTop: "0.8rem" }}>
+        <div className="dashboard-grid dashboard-grid-main">
           <div className="dashboard-kpi">
             <strong>{dashboard?.critical_open_today ?? "-"}</strong>
             <span>Heute fällige kritische offene Mängel</span>
@@ -367,7 +367,7 @@ export default function ReportsList({ user, refreshToken }) {
         <div className="card-header">Mängelübersicht</div>
         {defectError ? <div className="error-box" style={{ marginTop: "0.8rem" }}>{defectError}</div> : null}
 
-        <div className="quick-actions" style={{ marginBottom: "0.7rem" }}>
+        <div className="quick-actions quick-actions-compact">
           <button
             type="button"
             className="btn-ghost"
@@ -406,7 +406,7 @@ export default function ReportsList({ user, refreshToken }) {
           </button>
         </div>
 
-        <div className="inline-fields">
+        <div className="inline-fields defect-filter-grid">
           <label>
             Priorität
             <select
