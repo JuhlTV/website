@@ -4,10 +4,35 @@ import ChecklistForm from "./components/ChecklistForm";
 import ReportsList from "./components/ReportsList";
 import { apiRequest } from "./api/client";
 
+function isStoredTokenUsable(token) {
+  try {
+    const parts = String(token || "").split(".");
+    if (parts.length !== 3) {
+      return false;
+    }
+
+    const payloadSegment = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const normalizedPayload = payloadSegment.padEnd(payloadSegment.length + ((4 - (payloadSegment.length % 4)) % 4), "=");
+    const payload = JSON.parse(atob(normalizedPayload));
+
+    if (!payload || typeof payload.exp !== "number") {
+      return true;
+    }
+
+    // Treat tokens that are effectively expired (30s skew) as invalid.
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    return payload.exp > nowSeconds + 30;
+  } catch {
+    return false;
+  }
+}
+
 function getStoredUser() {
   try {
     const token = localStorage.getItem("token");
-    if (!token || !token.trim()) {
+    if (!token || !token.trim() || !isStoredTokenUsable(token)) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
       return null;
     }
 
