@@ -163,6 +163,7 @@ export default function App() {
           <label className="switch-wrap">
             <input
               type="checkbox"
+              name="darkMode"
               checked={darkMode}
               onChange={(e) => setDarkMode(e.target.checked)}
             />

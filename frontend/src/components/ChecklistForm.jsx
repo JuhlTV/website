@@ -123,7 +123,11 @@ export default function ChecklistForm({ user, onReportCreated }) {
 
       <label>
         Fahrzeug
-        <select value={vehicleKey} onChange={(e) => handleVehicleChange(e.target.value)}>
+        <select
+          name="vehicleKey"
+          value={vehicleKey}
+          onChange={(e) => handleVehicleChange(e.target.value)}
+        >
           {vehicles.map((v) => (
             <option key={v.key} value={v.key}>
               {v.name}
@@ -156,6 +160,7 @@ export default function ChecklistForm({ user, onReportCreated }) {
                   <label className="status-check">
                     <input
                       type="checkbox"
+                      name={`status-${check.itemKey}-ok`}
                       checked={check.status === "ok"}
                       onChange={() => setStatus(index, "ok")}
                     />
@@ -164,6 +169,7 @@ export default function ChecklistForm({ user, onReportCreated }) {
                   <label className="status-check">
                     <input
                       type="checkbox"
+                      name={`status-${check.itemKey}-defekt`}
                       checked={check.status === "defekt"}
                       onChange={() => setStatus(index, "defekt")}
                     />
@@ -176,6 +182,7 @@ export default function ChecklistForm({ user, onReportCreated }) {
                 Kommentar
                 <input
                   type="text"
+                  name={`comment-${check.itemKey}`}
                   value={check.comment}
                   onChange={(e) => updateCheck(index, { comment: e.target.value })}
                   placeholder="Optional"
@@ -188,6 +195,7 @@ export default function ChecklistForm({ user, onReportCreated }) {
                 <label>
                   Defektbeschreibung
                   <textarea
+                    name={`defectDescription-${check.itemKey}`}
                     value={check.defectDescription}
                     onChange={(e) => updateCheck(index, { defectDescription: e.target.value })}
                     placeholder="Beschreibung ist Pflicht"
@@ -198,6 +206,7 @@ export default function ChecklistForm({ user, onReportCreated }) {
                 <label>
                   Priorität
                   <select
+                    name={`defectPriority-${check.itemKey}`}
                     value={check.defectPriority}
                     onChange={(e) => updateCheck(index, { defectPriority: e.target.value })}
                   >

@@ -163,6 +163,7 @@ export default function ReportsList({ user, refreshToken }) {
               Empfänger (Komma-getrennt)
               <input
                 type="text"
+                name="emailRecipients"
                 value={emailTarget.input}
                 onChange={(e) => setEmailTarget((prev) => ({ ...prev, input: e.target.value }))}
                 placeholder="z.B. max@fw-rellingen.de, eva@fw-rellingen.de"
@@ -221,7 +222,11 @@ export default function ReportsList({ user, refreshToken }) {
         <div className="inline-fields">
           <label>
             Priorität
-            <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
+            <select
+              name="priorityFilter"
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+            >
               <option value="alle">Alle</option>
               <option value="kritisch">Kritisch</option>
               <option value="mittel">Mittel</option>
@@ -232,6 +237,7 @@ export default function ReportsList({ user, refreshToken }) {
           <label>
             Fahrzeug
             <select
+              name="defectVehicleFilter"
               value={defectVehicleFilter}
               onChange={(e) => setDefectVehicleFilter(e.target.value)}
             >
@@ -284,6 +290,7 @@ export default function ReportsList({ user, refreshToken }) {
         <label>
           Fahrzeugfilter
           <select
+            name="historyVehicleFilter"
             value={historyVehicleFilter}
             onChange={(e) => setHistoryVehicleFilter(e.target.value)}
           >

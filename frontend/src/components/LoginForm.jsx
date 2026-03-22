@@ -69,6 +69,7 @@ export default function LoginForm({ onLogin, onBackToGuest }) {
           Passwort
           <input
             type="password"
+            name="password"
             value={password}
             onChange={(e) => {
               setPassword(e.target.value);
