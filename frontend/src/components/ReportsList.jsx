@@ -292,7 +292,8 @@ export default function ReportsList({ user, refreshToken }) {
     try {
       await apiRequest(`/reports/defects/${encodeURIComponent(defect.id)}/resolve`, {
         method: "PATCH",
-        body: JSON.stringify({ resolve: shouldResolve })
+        body: JSON.stringify({ resolve: shouldResolve }),
+        handleUnauthorized: false
       });
 
       const params = new URLSearchParams();
@@ -300,11 +301,17 @@ export default function ReportsList({ user, refreshToken }) {
       if (defectStatusFilter !== "alle") params.set("status", defectStatusFilter);
       if (defectVehicleFilter !== "alle") params.set("vehicleKey", defectVehicleFilter);
       const query = params.toString() ? `?${params.toString()}` : "";
-      const data = await apiRequest(`/reports/defects${query}`);
+      const data = await apiRequest(`/reports/defects${query}`, {
+        handleUnauthorized: false
+      });
       setDefects(data.defects || []);
       setDefectSummary(data.summary || []);
     } catch (err) {
-      setDefectError(err.message);
+      if (/401/.test(String(err?.message || ""))) {
+        setDefectError("Sitzung nicht bestätigt. Bitte erneut einloggen.");
+      } else {
+        setDefectError(err.message);
+      }
     } finally {
       setResolvingDefectId("");
     }
@@ -742,9 +749,9 @@ export default function ReportsList({ user, refreshToken }) {
             >
               <div>
                 <strong>{defect.vehicle_name}</strong>
-                <p>{defect.item_label}</p>
-                <p>{defect.description_text}</p>
-                <p>
+                <p className="defect-check-label">{defect.item_label}</p>
+                <p className="defect-description">{defect.description_text}</p>
+                <p className="defect-meta-row">
                   {new Date(defect.timestamp).toLocaleString("de-DE")} | {defect.username}
                 </p>
               </div>

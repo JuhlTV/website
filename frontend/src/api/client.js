@@ -44,9 +44,14 @@ function getAuthHeaders() {
 }
 
 export async function apiRequest(path, options = {}) {
+  const {
+    handleUnauthorized = true,
+    ...requestOptions
+  } = options;
+
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   const endpoint = `${API_BASE}${normalizedPath}`;
-  const hasExternalSignal = Boolean(options.signal);
+  const hasExternalSignal = Boolean(requestOptions.signal);
   const timeoutController = hasExternalSignal ? null : new AbortController();
   const timeoutId = hasExternalSignal
     ? null
@@ -54,17 +59,17 @@ export async function apiRequest(path, options = {}) {
 
   try {
     const response = await fetch(endpoint, {
-      ...options,
+      ...requestOptions,
       ...(timeoutController ? { signal: timeoutController.signal } : {}),
       headers: {
         ...getAuthHeaders(),
-        ...(options.headers || {})
+        ...(requestOptions.headers || {})
       }
     });
 
     if (!response.ok) {
       // Clear stale token and re-bootstrap guest session automatically.
-      if (response.status === 401) {
+      if (response.status === 401 && handleUnauthorized) {
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         window.dispatchEvent(new Event("auth:unauthorized"));

@@ -1220,6 +1220,26 @@ button:disabled {
   position: relative;
 }
 
+.defect-check-label {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.defect-description {
+  margin-top: 0.2rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.03);
+  color: #2a2a2a !important;
+  max-width: 82ch;
+}
+
+.defect-meta-row {
+  margin-top: 0.28rem !important;
+  font-size: 0.78rem !important;
+  opacity: 0.9;
+}
+
 .defect-item::before {
   content: "";
   position: absolute;
@@ -1297,6 +1317,11 @@ button:disabled {
   background:
     linear-gradient(90deg, rgba(193, 0, 31, 0.26) 0%, rgba(193, 0, 31, 0.08) 28%, transparent 72%),
     linear-gradient(180deg, rgba(42, 42, 42, 0.92), rgba(32, 32, 32, 0.95));
+}
+
+.app-root.dark .defect-description {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e7e7e7 !important;
 }
 
 .app-root.dark .defect-priority-kritisch strong {
