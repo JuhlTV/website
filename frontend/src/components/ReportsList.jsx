@@ -468,7 +468,7 @@ export default function ReportsList({ user, refreshToken }) {
           </p>
         ) : null}
         {dashboard?.vehicles_without_open_defects?.length ? (
-          <p style={{ marginTop: "0.8rem", color: "var(--muted)" }}>
+          <p className="muted-list-note">
             Ohne offene Mängel: {dashboard.vehicles_without_open_defects.map((v) => v.name).join(", ")}
           </p>
         ) : null}
@@ -562,7 +562,7 @@ export default function ReportsList({ user, refreshToken }) {
         <div className="card-header">Mängelübersicht</div>
         {defectError ? <div className="error-box" style={{ marginTop: "0.8rem" }}>{defectError}</div> : null}
 
-        <div className="quick-actions quick-actions-compact">
+        <div className="quick-actions quick-actions-compact defect-toolbar">
           <button
             type="button"
             className="btn-ghost"
@@ -607,7 +607,7 @@ export default function ReportsList({ user, refreshToken }) {
             Filter zurücksetzen
           </button>
         </div>
-        <p className="saved-filter-hint">Tastenkürzel: R setzt alle Filter sofort zurück.</p>
+        <p className="saved-filter-hint shortcut-note">Tastenkürzel: R setzt alle Filter sofort zurück.</p>
 
         <div className="inline-fields defect-filter-grid">
           <label>
@@ -716,7 +716,7 @@ export default function ReportsList({ user, refreshToken }) {
           )}
         </div>
 
-        <div className="summary-row">
+        <div className="summary-row defect-summary-row">
           <span className="badge">Gesamt: {defects.length}</span>
           {defectSummary.map((item) => (
             <span key={item.priority} className="badge">

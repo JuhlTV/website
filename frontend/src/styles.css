@@ -818,6 +818,25 @@ button:disabled {
   font-size: 0.77rem;
 }
 
+.defect-toolbar {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  padding: 0.48rem;
+}
+
+.defect-toolbar .btn-ghost {
+  border-color: #a6a6a6 !important;
+  color: #2a2a2a !important;
+  background: #f4f4f4 !important;
+}
+
+.defect-toolbar .btn-ghost:hover {
+  border-color: var(--fw-red) !important;
+  color: #7f0000 !important;
+  background: #fff3f5 !important;
+}
+
 .defect-filter-grid {
   align-items: end;
 }
@@ -829,6 +848,12 @@ button:disabled {
   gap: 0.55rem;
 }
 
+.shortcut-note {
+  margin-top: -0.1rem;
+  margin-bottom: 0.55rem;
+  padding-left: 0.35rem;
+}
+
 .saved-filter-hint {
   font-size: 0.82rem;
   color: var(--muted);
@@ -838,6 +863,7 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
+  align-items: stretch;
 }
 
 .saved-filter-item {
@@ -847,6 +873,11 @@ button:disabled {
   border-radius: 3px;
   overflow: hidden;
   background: var(--surface-2);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.saved-filter-item:hover {
+  border-color: #b7b7b7;
 }
 
 .saved-filter-load {
@@ -875,6 +906,11 @@ button:disabled {
   letter-spacing: 0;
 }
 
+.saved-filter-action:hover {
+  background: rgba(193, 0, 31, 0.08) !important;
+  color: #8b0000 !important;
+}
+
 .saved-filter-action.is-favorite {
   background: rgba(193, 0, 31, 0.16) !important;
   color: #8b0000 !important;
@@ -894,9 +930,31 @@ button:disabled {
   background: rgba(193, 0, 31, 0.24) !important;
 }
 
+.defect-summary-row {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-2);
+  padding: 0.45rem 0.5rem;
+}
+
+.defect-summary-row .badge {
+  background: #fff;
+}
+
+.muted-list-note {
+  margin-top: 0.8rem;
+  color: var(--muted);
+  font-size: 0.83rem;
+}
+
 .app-root.dark .saved-filter-item {
   border-color: #484848;
   background: #222;
+  box-shadow: none;
+}
+
+.app-root.dark .saved-filter-item:hover {
+  border-color: #666;
 }
 
 .app-root.dark .saved-filter-load {
@@ -915,6 +973,11 @@ button:disabled {
   color: #cecece !important;
 }
 
+.app-root.dark .saved-filter-action:hover {
+  background: rgba(193, 0, 31, 0.18) !important;
+  color: #ffb0b0 !important;
+}
+
 .app-root.dark .saved-filter-action.is-favorite {
   background: rgba(193, 0, 31, 0.24) !important;
   color: #ff9a9a !important;
@@ -922,6 +985,33 @@ button:disabled {
 
 .app-root.dark .saved-filter-delete {
   color: #c6c6c6 !important;
+}
+
+.app-root.dark .defect-toolbar {
+  border-color: #3f3f3f;
+  background: linear-gradient(180deg, #262626, #1e1e1e);
+}
+
+.app-root.dark .defect-toolbar .btn-ghost {
+  border-color: #666 !important;
+  color: #efefef !important;
+  background: #2c2c2c !important;
+}
+
+.app-root.dark .defect-toolbar .btn-ghost:hover {
+  border-color: #ff7d7d !important;
+  color: #ffd8d8 !important;
+  background: rgba(193, 0, 31, 0.18) !important;
+}
+
+.app-root.dark .defect-summary-row {
+  border-color: #3f3f3f;
+  background: #252525;
+}
+
+.app-root.dark .defect-summary-row .badge {
+  background: #2f2f2f;
+  border-color: #4a4a4a;
 }
 
 .history-priority {
@@ -1070,7 +1160,8 @@ button:disabled {
     top: 72px;
     z-index: 15;
     background: var(--surface);
-    padding: 0.45rem 0;
+    padding: 0.45rem;
+    backdrop-filter: blur(2px);
   }
 
   .quick-actions-compact .btn-ghost {
