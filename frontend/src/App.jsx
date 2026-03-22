@@ -6,6 +6,11 @@ import { apiRequest } from "./api/client";
 
 function getStoredUser() {
   try {
+    const token = localStorage.getItem("token");
+    if (!token || !token.trim()) {
+      return null;
+    }
+
     const raw = localStorage.getItem("user");
     return raw ? JSON.parse(raw) : null;
   } catch {
