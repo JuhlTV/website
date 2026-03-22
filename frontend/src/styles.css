@@ -7,6 +7,7 @@
   /* Feuerwehr Rellingen palette */
   --fw-red: #c1001f;
   --fw-red-dark: #960018;
+  --fw-amber: #ffb400;
   --fw-black: #1a1a1a;
   --fw-nav: #111111;
 
@@ -46,7 +47,15 @@ body {
   margin: 0;
   font-family: var(--font-body);
   background:
-    radial-gradient(circle at 20% -10%, rgba(193, 0, 31, 0.08), transparent 36%),
+    radial-gradient(circle at 20% -10%, rgba(193, 0, 31, 0.1), transparent 36%),
+    radial-gradient(circle at 95% 115%, rgba(255, 180, 0, 0.09), transparent 30%),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(0, 0, 0, 0.018) 0,
+      rgba(0, 0, 0, 0.018) 2px,
+      transparent 2px,
+      transparent 8px
+    ),
     var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -93,14 +102,16 @@ p {
 .app-root {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 85% -10%, rgba(193, 0, 31, 0.09), transparent 38%),
+    radial-gradient(circle at 85% -10%, rgba(193, 0, 31, 0.13), transparent 38%),
+    radial-gradient(circle at 15% 120%, rgba(255, 180, 0, 0.07), transparent 32%),
     var(--bg);
   transition: background-color 220ms ease;
 }
 
 .app-root.dark {
   background:
-    radial-gradient(circle at 82% -10%, rgba(193, 0, 31, 0.2), transparent 35%),
+    radial-gradient(circle at 82% -10%, rgba(193, 0, 31, 0.24), transparent 35%),
+    radial-gradient(circle at 8% 120%, rgba(255, 180, 0, 0.09), transparent 34%),
     var(--bg);
 }
 
@@ -112,17 +123,49 @@ p {
   gap: 1rem;
   padding: 0 1.2rem;
   height: 64px;
-  background: linear-gradient(90deg, #111111 0%, #1a1a1a 55%, #141414 100%);
+  background: linear-gradient(90deg, #090909 0%, #1b1b1b 52%, #141414 100%);
+  border-bottom: 1px solid #2d2d2d;
   box-shadow: 0 2px 6px rgba(0,0,0,0.5);
   position: sticky;
   top: 0;
   z-index: 100;
+  overflow: hidden;
+}
+
+.topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 0%, rgba(193, 0, 31, 0.16) 42%, transparent 78%);
+  transform: translateX(-55%);
+  animation: topbarSweep 8.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.topbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--fw-amber) 0,
+    var(--fw-amber) 10px,
+    #161616 10px,
+    #161616 20px
+  );
+  opacity: 0.95;
+  pointer-events: none;
 }
 
 .topbar-brand {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  position: relative;
+  z-index: 1;
 }
 
 .topbar-emblem {
@@ -131,7 +174,9 @@ p {
   justify-content: center;
   width: 42px;
   height: 42px;
-  background: var(--fw-red);
+  background:
+    radial-gradient(circle at 30% 25%, #e03d57 0%, transparent 38%),
+    linear-gradient(140deg, #d41033 0%, #8c0018 100%);
   color: #fff;
   font-family: var(--font-head);
   font-size: 0.65rem;
@@ -142,6 +187,8 @@ p {
   text-transform: uppercase;
   padding: 4px;
   flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 0 2px rgba(255, 180, 0, 0.4), 0 5px 14px rgba(0, 0, 0, 0.45);
 }
 
 .topbar h1 {
@@ -162,6 +209,8 @@ p {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  position: relative;
+  z-index: 1;
 }
 
 .topbar-actions button {
@@ -221,21 +270,31 @@ p {
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1.2rem;
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.96)),
+    var(--surface);
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.08);
   transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
 }
 
 .card:hover {
-  border-color: #bfbfbf;
+  border-color: #c1001f55;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
 }
 
 .app-root.dark .card:hover {
-  border-color: #525252;
+  border-color: #6a3038;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.34);
+}
+
+.app-root.dark .card {
+  background:
+    linear-gradient(180deg, rgba(34, 34, 34, 0.9), rgba(30, 30, 30, 0.96)),
+    var(--surface);
 }
 
 .card-header {
-  background: var(--fw-black);
+  background: linear-gradient(90deg, #171717 0%, #1f1f1f 48%, #121212 100%);
   color: #ffffff;
   margin: -1.2rem -1.2rem 1.2rem;
   padding: 0.7rem 1.2rem;
@@ -247,6 +306,8 @@ p {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  position: relative;
+  overflow: hidden;
 }
 
 .card-header::before {
@@ -257,6 +318,24 @@ p {
   background: var(--fw-red);
   border-radius: 2px;
   flex-shrink: 0;
+}
+
+.card-header::after {
+  content: "";
+  position: absolute;
+  right: 0.6rem;
+  top: 0.55rem;
+  width: 68px;
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0.8;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(255, 180, 0, 0.92) 0,
+    rgba(255, 180, 0, 0.92) 8px,
+    rgba(22, 22, 22, 0.9) 8px,
+    rgba(22, 22, 22, 0.9) 16px
+  );
 }
 
 .login-card {
@@ -637,7 +716,8 @@ button:disabled {
   justify-content: space-between;
   gap: 0.8rem;
   flex-wrap: wrap;
-  background: var(--surface);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 249, 249, 0.96));
   transition: border-color 180ms ease, background-color 180ms ease;
 }
 
@@ -647,6 +727,10 @@ button:disabled {
 
 .app-root.dark .report-item:hover {
   border-color: #555555;
+}
+
+.app-root.dark .report-item {
+  background: linear-gradient(180deg, rgba(42, 42, 42, 0.92), rgba(32, 32, 32, 0.95));
 }
 
 .report-item strong {
@@ -743,6 +827,10 @@ button:disabled {
 
 .dashboard-kpi.warning-immediate strong {
   color: #7f1d1d;
+}
+
+.dashboard-kpi.warning-immediate {
+  animation: urgentPulse 2.8s ease-in-out infinite;
 }
 
 .badge.escalation.urgent {
@@ -1132,6 +1220,39 @@ button:disabled {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes topbarSweep {
+  0%,
+  100% {
+    transform: translateX(-55%);
+    opacity: 0.2;
+  }
+  45% {
+    transform: translateX(5%);
+    opacity: 0.45;
+  }
+  70% {
+    transform: translateX(28%);
+    opacity: 0.25;
+  }
+}
+
+@keyframes urgentPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(180, 35, 24, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(180, 35, 24, 0.07);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar::before,
+  .dashboard-kpi.warning-immediate {
+    animation: none;
+  }
 }
 
 /* ── Responsive ───────────────────────────────────────────── */
