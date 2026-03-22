@@ -240,6 +240,14 @@ export default function ReportsList({ user, refreshToken }) {
             <strong>{dashboard?.critical_open_overdue_24h ?? "-"}</strong>
             <span>Kritische offene Mängel über 24h (überfällig)</span>
           </div>
+          <div className="dashboard-kpi warning-urgent">
+            <strong>{dashboard?.critical_open_overdue_48h ?? "-"}</strong>
+            <span>Kritisch offen &gt; 48h (dringend)</span>
+          </div>
+          <div className="dashboard-kpi warning-immediate">
+            <strong>{dashboard?.critical_open_overdue_72h ?? "-"}</strong>
+            <span>Kritisch offen &gt; 72h (sofort handeln)</span>
+          </div>
           <div className="dashboard-kpi">
             <strong>{dashboard?.vehicles_without_open_defects_total ?? "-"}</strong>
             <span>Fahrzeuge ohne offenen Mangel</span>
@@ -249,6 +257,16 @@ export default function ReportsList({ user, refreshToken }) {
             <span>Behoben in den letzten 24h</span>
           </div>
         </div>
+        {dashboard?.critical_open_overdue_72h_vehicles?.length ? (
+          <p className="dashboard-warning-text immediate">
+            Sofort handeln (72h+): {dashboard.critical_open_overdue_72h_vehicles.join(", ")}
+          </p>
+        ) : null}
+        {dashboard?.critical_open_overdue_48h_vehicles?.length ? (
+          <p className="dashboard-warning-text urgent">
+            Dringend (48h+): {dashboard.critical_open_overdue_48h_vehicles.join(", ")}
+          </p>
+        ) : null}
         {dashboard?.critical_open_overdue_24h_vehicles?.length ? (
           <p className="dashboard-warning-text">
             Überfällig kritisch: {dashboard.critical_open_overdue_24h_vehicles.join(", ")}
@@ -455,6 +473,12 @@ export default function ReportsList({ user, refreshToken }) {
                 </p>
               </div>
               <div className="report-actions">
+                {defect.escalation_level === "sofort_handeln" ? (
+                  <span className="badge escalation immediate">Sofort handeln</span>
+                ) : null}
+                {defect.escalation_level === "dringend" ? (
+                  <span className="badge escalation urgent">Dringend</span>
+                ) : null}
                 {defect.resolved_at ? (
                   <span className="badge defect-status behoben">Behoben</span>
                 ) : (

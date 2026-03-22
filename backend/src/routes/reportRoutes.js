@@ -62,6 +62,33 @@ function csvEscape(value) {
   return `"${escaped}"`;
 }
 
+function getEscalationLevelForDefect(defect) {
+  if (!defect || defect.priority !== "kritisch" || defect.resolvedAt || defect.resolved_at) {
+    return null;
+  }
+
+  const timestamp = defect.timestamp;
+  const defectMs = new Date(timestamp).getTime();
+  if (!Number.isFinite(defectMs)) {
+    return null;
+  }
+
+  const ageHours = (Date.now() - defectMs) / (1000 * 60 * 60);
+  if (ageHours >= 72) {
+    return "sofort_handeln";
+  }
+  if (ageHours >= 48) {
+    return "dringend";
+  }
+  return null;
+}
+
+function getEscalationRank(level) {
+  if (level === "sofort_handeln") return 2;
+  if (level === "dringend") return 1;
+  return 0;
+}
+
 function buildPdfPayloadFromReport(report) {
   const checks = (report.checks || []).map((check) => ({
     item_label: check.itemLabel,
@@ -199,7 +226,17 @@ function collectDefects(reports, { priority, vehicleKey, status, resolvedSinceHo
     }
   }
 
-  defects.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  for (const defect of defects) {
+    defect.escalation_level = getEscalationLevelForDefect(defect);
+  }
+
+  defects.sort((a, b) => {
+    const escalationDelta = getEscalationRank(b.escalation_level) - getEscalationRank(a.escalation_level);
+    if (escalationDelta !== 0) {
+      return escalationDelta;
+    }
+    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+  });
   return defects;
 }
 
@@ -405,7 +442,12 @@ router.get("/dashboard", requireAuth, requireRole("geraetewart"), async (req, re
       return Number.isFinite(defectTimeMs) && defectTimeMs < overdueThresholdMs;
     });
 
+    const overdueCriticalOpen48h = openDefects.filter((defect) => defect.escalation_level === "dringend");
+    const overdueCriticalOpen72h = openDefects.filter((defect) => defect.escalation_level === "sofort_handeln");
+
     const overdueCriticalVehicleSet = new Set(overdueCriticalOpenDefects.map((defect) => defect.vehicle_name));
+    const overdueCriticalVehicleSet48h = new Set(overdueCriticalOpen48h.map((defect) => defect.vehicle_name));
+    const overdueCriticalVehicleSet72h = new Set(overdueCriticalOpen72h.map((defect) => defect.vehicle_name));
 
     const vehicles = getVehiclesWithChecklist();
     const openVehicleKeySet = new Set(openDefects.map((defect) => defect.vehicle_key));
@@ -425,6 +467,10 @@ router.get("/dashboard", requireAuth, requireRole("geraetewart"), async (req, re
       critical_open_today: criticalOpenToday,
       critical_open_overdue_24h: overdueCriticalOpenDefects.length,
       critical_open_overdue_24h_vehicles: Array.from(overdueCriticalVehicleSet),
+      critical_open_overdue_48h: overdueCriticalOpen48h.length,
+      critical_open_overdue_48h_vehicles: Array.from(overdueCriticalVehicleSet48h),
+      critical_open_overdue_72h: overdueCriticalOpen72h.length,
+      critical_open_overdue_72h_vehicles: Array.from(overdueCriticalVehicleSet72h),
       open_defects_total: openDefects.length,
       resolved_last_24h: resolvedLast24h,
       vehicles_without_open_defects: vehiclesWithoutOpenDefects,
