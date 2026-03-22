@@ -1,6 +1,6 @@
 import express from "express";
 import dayjs from "dayjs";
-import { requireAuth, requireRole } from "../middleware/auth.js";
+import { optionalAuth, requireAuth, requireRole } from "../middleware/auth.js";
 import { createRateLimiter } from "../middleware/rateLimit.js";
 import { findVehicleByKey } from "../config/vehicles.js";
 import { validateChecklistPayload } from "../utils/validators.js";
@@ -103,6 +103,15 @@ function resolveReportUsername(reqUser, payloadUsername) {
   return fallback || "unbekannt";
 }
 
+function resolveReportUserId(reqUser) {
+  const tokenUserId = String(reqUser?.id || "").trim();
+  if (tokenUserId) {
+    return tokenUserId;
+  }
+
+  return `guest-${dayjs().valueOf()}`;
+}
+
 function validateChecksAgainstVehicle(checks, vehicle) {
   const vehicleChecklist = Array.isArray(vehicle?.checklist) ? vehicle.checklist : [];
   const allowedKeys = new Set(vehicleChecklist.map((item) => item.key));
@@ -125,7 +134,7 @@ function validateChecksAgainstVehicle(checks, vehicle) {
   return null;
 }
 
-router.post("/", requireAuth, reportCreateLimiter, async (req, res) => {
+router.post("/", optionalAuth, reportCreateLimiter, async (req, res) => {
   const validationError = validateChecklistPayload(req.body);
   if (validationError) {
     return res.status(400).json({ message: validationError });
@@ -134,6 +143,7 @@ router.post("/", requireAuth, reportCreateLimiter, async (req, res) => {
   const { vehicleKey, checks, username } = req.body;
   const vehicle = findVehicleByKey(vehicleKey);
   const resolvedUsername = resolveReportUsername(req.user, username);
+  const resolvedUserId = resolveReportUserId(req.user);
 
   if (!vehicle) {
     return res.status(404).json({ message: "Fahrzeug nicht gefunden" });
@@ -164,7 +174,7 @@ router.post("/", requireAuth, reportCreateLimiter, async (req, res) => {
       }));
 
     const report = await createReport({
-      userId: req.user.id,
+      userId: resolvedUserId,
       username: resolvedUsername,
       vehicleKey: vehicle.key,
       vehicleName: vehicle.name,
