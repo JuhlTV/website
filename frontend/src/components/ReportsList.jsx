@@ -146,6 +146,47 @@ export default function ReportsList({ user, refreshToken }) {
 
         {!loading && reports.length === 0 ? <div>Noch keine Berichte vorhanden.</div> : null}
 
+        {emailTarget ? (
+          <div className="email-panel">
+            <div className="email-panel-head">
+              Bericht #{emailTarget.reportId} versenden
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ padding: "0.2rem 0.5rem", fontSize: "0.78rem" }}
+                onClick={() => setEmailTarget(null)}
+              >
+                X
+              </button>
+            </div>
+            <label>
+              Empfänger (Komma-getrennt)
+              <input
+                type="text"
+                value={emailTarget.input}
+                onChange={(e) => setEmailTarget((prev) => ({ ...prev, input: e.target.value }))}
+                placeholder="z.B. max@fw-rellingen.de, eva@fw-rellingen.de"
+                disabled={emailTarget.sending}
+              />
+            </label>
+            {emailTarget.error ? <div className="error-box">{emailTarget.error}</div> : null}
+            {emailTarget.success ? <div className="success-box">{emailTarget.success}</div> : null}
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button type="button" onClick={submitEmail} disabled={emailTarget.sending}>
+                {emailTarget.sending ? "Sende..." : "Versenden"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setEmailTarget(null)}
+                disabled={emailTarget.sending}
+              >
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="reports-list">
           {reports.map((report) => (
             <article key={report.id} className="report-item">
@@ -281,32 +322,3 @@ export default function ReportsList({ user, refreshToken }) {
     </div>
   );
 }
-
-        {emailTarget ? (
-          <div className="email-panel">
-            <div className="email-panel-head">
-              Bericht #{emailTarget.reportId} versenden
-              <button type="button" className="btn-ghost" style={{ padding: "0.2rem 0.5rem", fontSize: "0.78rem" }} onClick={() => setEmailTarget(null)}>✕</button>
-            </div>
-            <label>
-              Empfänger (Komma-getrennt)
-              <input
-                type="text"
-                value={emailTarget.input}
-                onChange={(e) => setEmailTarget((prev) => ({ ...prev, input: e.target.value }))}
-                placeholder="z.B. max@fw-rellingen.de, eva@fw-rellingen.de"
-                disabled={emailTarget.sending}
-              />
-            </label>
-            {emailTarget.error ? <div className="error-box">{emailTarget.error}</div> : null}
-            {emailTarget.success ? <div className="success-box">{emailTarget.success}</div> : null}
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button type="button" onClick={submitEmail} disabled={emailTarget.sending}>
-                {emailTarget.sending ? "Sende..." : "Versenden"}
-              </button>
-              <button type="button" className="btn-ghost" onClick={() => setEmailTarget(null)} disabled={emailTarget.sending}>
-                Abbrechen
-              </button>
-            </div>
-          </div>
-        ) : null}
