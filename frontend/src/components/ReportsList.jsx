@@ -728,7 +728,18 @@ export default function ReportsList({ user, refreshToken }) {
         <div className="reports-list">
           {defects.length === 0 ? <div>Keine Mängel für den aktuellen Filter.</div> : null}
           {defects.map((defect) => (
-            <article key={defect.id} className="report-item defect-item">
+            <article
+              key={defect.id}
+              className={[
+                "report-item",
+                "defect-item",
+                `defect-priority-${defect.priority}`,
+                defect.escalation_level ? `defect-escalation-${defect.escalation_level}` : "",
+                defect.resolved_at ? "defect-resolved" : "defect-open"
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
               <div>
                 <strong>{defect.vehicle_name}</strong>
                 <p>{defect.item_label}</p>
