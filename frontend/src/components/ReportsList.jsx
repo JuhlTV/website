@@ -748,7 +748,7 @@ export default function ReportsList({ user, refreshToken }) {
                   {new Date(defect.timestamp).toLocaleString("de-DE")} | {defect.username}
                 </p>
               </div>
-              <div className="report-actions">
+              <div className="report-actions defect-actions">
                 {defect.escalation_level === "sofort_handeln" ? (
                   <span className="badge escalation immediate">Sofort handeln</span>
                 ) : null}
@@ -763,7 +763,7 @@ export default function ReportsList({ user, refreshToken }) {
                 <span className={`badge priority-${defect.priority}`}>{defect.priority}</span>
                 <button
                   type="button"
-                  className="btn-ghost"
+                  className="btn-ghost btn-defect-resolve"
                   disabled={resolvingDefectId === defect.id}
                   onClick={() => toggleDefectResolve(defect)}
                 >
@@ -773,7 +773,11 @@ export default function ReportsList({ user, refreshToken }) {
                     ? "Wieder öffnen"
                     : "Als behoben"}
                 </button>
-                <button type="button" onClick={() => downloadPdf(defect.report_id)}>
+                <button
+                  type="button"
+                  className="btn-defect-report"
+                  onClick={() => downloadPdf(defect.report_id)}
+                >
                   Bericht
                 </button>
               </div>

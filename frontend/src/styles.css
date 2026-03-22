@@ -733,6 +733,33 @@ button:disabled {
   background: linear-gradient(180deg, rgba(42, 42, 42, 0.92), rgba(32, 32, 32, 0.95));
 }
 
+.app-root.dark .btn-defect-report {
+  background: linear-gradient(180deg, #d5193d 0%, #9b001c 100%);
+  border-color: #ff6b6b;
+}
+
+.app-root.dark .btn-defect-report:hover {
+  background: linear-gradient(180deg, #ea3254 0%, #b10021 100%);
+}
+
+.app-root.dark .btn-defect-resolve {
+  border-color: #777 !important;
+  background: #2b2b2b !important;
+  color: #f0f0f0 !important;
+}
+
+.app-root.dark .btn-defect-resolve:hover {
+  border-color: #ff7d7d !important;
+  color: #ffd5d5 !important;
+  background: rgba(193, 0, 31, 0.2) !important;
+}
+
+.app-root.dark .btn-defect-report:focus-visible,
+.app-root.dark .btn-defect-resolve:focus-visible {
+  outline-color: #ff9a9a;
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.3);
+}
+
 .report-item strong {
   font-family: var(--font-head);
   font-size: 0.95rem;
@@ -754,6 +781,54 @@ button:disabled {
 .report-actions button {
   padding: 0.35rem 0.7rem;
   font-size: 0.78rem;
+}
+
+.defect-actions {
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.defect-actions .badge {
+  font-size: 0.72rem;
+  padding: 0.16rem 0.5rem;
+}
+
+.defect-actions button {
+  min-height: 30px;
+  padding: 0.3rem 0.62rem;
+  border-radius: 2px;
+  font-size: 0.73rem;
+  letter-spacing: 0.03em;
+  font-weight: 700;
+}
+
+.btn-defect-report {
+  background: linear-gradient(180deg, #d11234 0%, #97001a 100%);
+  border: 1px solid #7e0015;
+  color: #fff;
+}
+
+.btn-defect-report:hover {
+  background: linear-gradient(180deg, #e2183d 0%, #a3001d 100%);
+}
+
+.btn-defect-resolve {
+  border: 1px solid #8f8f8f !important;
+  background: #f2f2f2 !important;
+  color: #2a2a2a !important;
+}
+
+.btn-defect-resolve:hover {
+  border-color: #c1001f !important;
+  color: #7f0000 !important;
+  background: #fff3f5 !important;
+}
+
+.btn-defect-report:focus-visible,
+.btn-defect-resolve:focus-visible {
+  outline: 2px solid var(--fw-red);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px rgba(193, 0, 31, 0.2);
 }
 
 .dashboard-grid {
@@ -1446,6 +1521,17 @@ button:disabled {
   .quick-actions-compact .btn-ghost {
     width: 100%;
     text-align: center;
+  }
+
+  .defect-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .defect-actions .btn-defect-report,
+  .defect-actions .btn-defect-resolve {
+    flex: 1 1 auto;
+    min-width: 120px;
   }
 
   .saved-filter-item {
