@@ -837,6 +837,12 @@ button:disabled {
   background: #fff3f5 !important;
 }
 
+.defect-toolbar .btn-ghost:focus-visible {
+  outline: 2px solid var(--fw-red);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 3px rgba(193, 0, 31, 0.22);
+}
+
 .defect-filter-grid {
   align-items: end;
 }
@@ -909,6 +915,16 @@ button:disabled {
 .saved-filter-action:hover {
   background: rgba(193, 0, 31, 0.08) !important;
   color: #8b0000 !important;
+}
+
+.saved-filter-load:focus-visible,
+.saved-filter-action:focus-visible,
+.saved-filter-delete:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--fw-red);
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.9);
 }
 
 .saved-filter-action.is-favorite {
@@ -1004,6 +1020,11 @@ button:disabled {
   background: rgba(193, 0, 31, 0.18) !important;
 }
 
+.app-root.dark .defect-toolbar .btn-ghost:focus-visible {
+  outline-color: #ff8d8d;
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.3);
+}
+
 .app-root.dark .defect-summary-row {
   border-color: #3f3f3f;
   background: #252525;
@@ -1012,6 +1033,13 @@ button:disabled {
 .app-root.dark .defect-summary-row .badge {
   background: #2f2f2f;
   border-color: #4a4a4a;
+}
+
+.app-root.dark .saved-filter-load:focus-visible,
+.app-root.dark .saved-filter-action:focus-visible,
+.app-root.dark .saved-filter-delete:focus-visible {
+  outline-color: #ff9a9a;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.45);
 }
 
 .history-priority {
