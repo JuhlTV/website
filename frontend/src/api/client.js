@@ -81,7 +81,7 @@ export async function apiRequest(path, options = {}) {
     }
 
     const contentType = response.headers.get("Content-Type") || "";
-    if (contentType.includes("application/pdf")) {
+    if (contentType.includes("application/pdf") || contentType.includes("text/csv")) {
       return response.blob();
     }
 

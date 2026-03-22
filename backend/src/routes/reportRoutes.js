@@ -56,6 +56,12 @@ function normalizeRecipients(inputRecipients) {
   return [...new Set(sanitized)];
 }
 
+function csvEscape(value) {
+  const raw = String(value ?? "");
+  const escaped = raw.replace(/"/g, '""');
+  return `"${escaped}"`;
+}
+
 function buildPdfPayloadFromReport(report) {
   const checks = (report.checks || []).map((check) => ({
     item_label: check.itemLabel,
@@ -458,6 +464,73 @@ router.get("/defects/export-pdf", requireAuth, requireRole("geraetewart"), async
     return res.send(pdfBuffer);
   } catch (error) {
     return res.status(500).json({ message: "Sammel-PDF konnte nicht erstellt werden", error: error.message });
+  }
+});
+
+router.get("/defects/export-csv", requireAuth, requireRole("geraetewart"), async (req, res) => {
+  const { priority, vehicleKey, status, resolvedSinceHours } = req.query;
+
+  if (priority && !["niedrig", "mittel", "kritisch"].includes(String(priority))) {
+    return res.status(400).json({ message: "Ungültige Priorität" });
+  }
+
+  if (status && !["alle", "offen", "behoben"].includes(String(status))) {
+    return res.status(400).json({ message: "Ungültiger Mängelstatus" });
+  }
+
+  if (resolvedSinceHours && (!Number.isFinite(Number(resolvedSinceHours)) || Number(resolvedSinceHours) <= 0)) {
+    return res.status(400).json({ message: "Ungültiger Zeitraum" });
+  }
+
+  try {
+    const reports = await listReportsByUser(req.user);
+    const defects = collectDefects(reports, {
+      priority,
+      vehicleKey,
+      status,
+      resolvedSinceHours: resolvedSinceHours ? Number(resolvedSinceHours) : null
+    });
+
+    const header = [
+      "defect_id",
+      "vehicle_name",
+      "vehicle_key",
+      "item_label",
+      "description",
+      "priority",
+      "status",
+      "captured_at",
+      "captured_by",
+      "resolved_at",
+      "resolved_by",
+      "report_id"
+    ];
+
+    const rows = defects.map((defect) => [
+      defect.id,
+      defect.vehicle_name,
+      defect.vehicle_key,
+      defect.item_label,
+      defect.description_text,
+      defect.priority,
+      defect.resolved_at ? "behoben" : "offen",
+      defect.timestamp,
+      defect.username,
+      defect.resolved_at || "",
+      defect.resolved_by || "",
+      defect.report_id
+    ]);
+
+    const csvLines = [header, ...rows]
+      .map((columns) => columns.map(csvEscape).join(";"))
+      .join("\n");
+
+    const timestamp = dayjs().format("YYYYMMDD-HHmm");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename=maengel-uebersicht-${timestamp}.csv`);
+    return res.send(`\uFEFF${csvLines}`);
+  } catch (error) {
+    return res.status(500).json({ message: "CSV-Export fehlgeschlagen", error: error.message });
   }
 });
 

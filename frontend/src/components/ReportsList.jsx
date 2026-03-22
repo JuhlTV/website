@@ -19,6 +19,7 @@ export default function ReportsList({ user, refreshToken }) {
   const [resolvingDefectId, setResolvingDefectId] = useState("");
   const [dashboard, setDashboard] = useState(null);
   const [exportingDefectsPdf, setExportingDefectsPdf] = useState(false);
+  const [exportingDefectsCsv, setExportingDefectsCsv] = useState(false);
 
   useEffect(() => {
     async function loadVehicles() {
@@ -155,6 +156,33 @@ export default function ReportsList({ user, refreshToken }) {
       setDefectError(err.message);
     } finally {
       setExportingDefectsPdf(false);
+    }
+  }
+
+  async function exportDefectsCsv() {
+    setDefectError("");
+    setExportingDefectsCsv(true);
+    try {
+      const params = new URLSearchParams();
+      if (priorityFilter !== "alle") params.set("priority", priorityFilter);
+      if (defectStatusFilter !== "alle") params.set("status", defectStatusFilter);
+      if (defectVehicleFilter !== "alle") params.set("vehicleKey", defectVehicleFilter);
+      if (defectStatusFilter === "behoben") params.set("resolvedSinceHours", "24");
+
+      const query = params.toString() ? `?${params.toString()}` : "";
+      const blob = await apiRequest(`/reports/defects/export-csv${query}`, {
+        headers: { Accept: "text/csv" }
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `maengel-uebersicht-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDefectError(err.message || "CSV-Export fehlgeschlagen");
+    } finally {
+      setExportingDefectsCsv(false);
     }
   }
 
@@ -340,6 +368,14 @@ export default function ReportsList({ user, refreshToken }) {
             onClick={exportDefectsPdf}
           >
             {exportingDefectsPdf ? "Export läuft..." : "PDF-Sammel-Export"}
+          </button>
+          <button
+            type="button"
+            className="btn-ghost"
+            disabled={exportingDefectsCsv}
+            onClick={exportDefectsCsv}
+          >
+            {exportingDefectsCsv ? "CSV läuft..." : "CSV-Export"}
           </button>
         </div>
 
