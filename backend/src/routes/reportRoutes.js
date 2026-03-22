@@ -386,6 +386,7 @@ router.get("/dashboard", requireAuth, requireRole("geraetewart"), async (req, re
     const reports = await listReportsByUser(req.user);
     const allDefects = collectDefects(reports, { status: "alle" });
     const openDefects = allDefects.filter((defect) => !defect.resolved_at);
+    const overdueThresholdMs = Date.now() - 24 * 60 * 60 * 1000;
 
     const todayStart = dayjs().startOf("day");
     const criticalOpenToday = openDefects.filter((defect) => {
@@ -395,6 +396,16 @@ router.get("/dashboard", requireAuth, requireRole("geraetewart"), async (req, re
       const defectTime = dayjs(defect.timestamp);
       return defectTime.isValid() && (defectTime.isAfter(todayStart) || defectTime.isSame(todayStart));
     }).length;
+
+    const overdueCriticalOpenDefects = openDefects.filter((defect) => {
+      if (defect.priority !== "kritisch") {
+        return false;
+      }
+      const defectTimeMs = new Date(defect.timestamp).getTime();
+      return Number.isFinite(defectTimeMs) && defectTimeMs < overdueThresholdMs;
+    });
+
+    const overdueCriticalVehicleSet = new Set(overdueCriticalOpenDefects.map((defect) => defect.vehicle_name));
 
     const vehicles = getVehiclesWithChecklist();
     const openVehicleKeySet = new Set(openDefects.map((defect) => defect.vehicle_key));
@@ -412,6 +423,8 @@ router.get("/dashboard", requireAuth, requireRole("geraetewart"), async (req, re
 
     return res.json({
       critical_open_today: criticalOpenToday,
+      critical_open_overdue_24h: overdueCriticalOpenDefects.length,
+      critical_open_overdue_24h_vehicles: Array.from(overdueCriticalVehicleSet),
       open_defects_total: openDefects.length,
       resolved_last_24h: resolvedLast24h,
       vehicles_without_open_defects: vehiclesWithoutOpenDefects,

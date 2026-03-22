@@ -236,6 +236,10 @@ export default function ReportsList({ user, refreshToken }) {
             <strong>{dashboard?.critical_open_today ?? "-"}</strong>
             <span>Heute fällige kritische offene Mängel</span>
           </div>
+          <div className="dashboard-kpi warning">
+            <strong>{dashboard?.critical_open_overdue_24h ?? "-"}</strong>
+            <span>Kritische offene Mängel über 24h (überfällig)</span>
+          </div>
           <div className="dashboard-kpi">
             <strong>{dashboard?.vehicles_without_open_defects_total ?? "-"}</strong>
             <span>Fahrzeuge ohne offenen Mangel</span>
@@ -245,6 +249,11 @@ export default function ReportsList({ user, refreshToken }) {
             <span>Behoben in den letzten 24h</span>
           </div>
         </div>
+        {dashboard?.critical_open_overdue_24h_vehicles?.length ? (
+          <p className="dashboard-warning-text">
+            Überfällig kritisch: {dashboard.critical_open_overdue_24h_vehicles.join(", ")}
+          </p>
+        ) : null}
         {dashboard?.vehicles_without_open_defects?.length ? (
           <p style={{ marginTop: "0.8rem", color: "var(--muted)" }}>
             Ohne offene Mängel: {dashboard.vehicles_without_open_defects.map((v) => v.name).join(", ")}

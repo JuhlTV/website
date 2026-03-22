@@ -660,6 +660,31 @@ button:disabled {
   color: var(--muted);
 }
 
+.dashboard-kpi.warning {
+  border-left-color: #b42318;
+  background: #fff1f1;
+}
+
+.dashboard-kpi.warning strong {
+  color: #8b0000;
+}
+
+.dashboard-warning-text {
+  margin-top: 0.7rem;
+  color: #8b0000;
+  font-weight: 700;
+}
+
+.app-root.dark .dashboard-kpi.warning {
+  background: rgba(180, 35, 24, 0.14);
+  border-left-color: #ff6b6b;
+}
+
+.app-root.dark .dashboard-kpi.warning strong,
+.app-root.dark .dashboard-warning-text {
+  color: #ff7d7d;
+}
+
 .quick-actions {
   display: flex;
   flex-wrap: wrap;
