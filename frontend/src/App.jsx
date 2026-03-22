@@ -4,6 +4,8 @@ import ChecklistForm from "./components/ChecklistForm";
 import ReportsList from "./components/ReportsList";
 import { apiRequest } from "./api/client";
 
+const DARKMODE_STORAGE_KEY = "darkMode";
+
 function isStoredTokenUsable(token) {
   try {
     const parts = String(token || "").split(".");
@@ -43,10 +45,26 @@ function getStoredUser() {
   }
 }
 
+function getInitialDarkMode() {
+  try {
+    const stored = localStorage.getItem(DARKMODE_STORAGE_KEY);
+    if (stored === "true") {
+      return true;
+    }
+    if (stored === "false") {
+      return false;
+    }
+  } catch {
+    // Ignore storage errors and fallback to system preference.
+  }
+
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
 export default function App() {
   const [user, setUser] = useState(getStoredUser);
   const [refreshToken, setRefreshToken] = useState(0);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(getInitialDarkMode);
   const [showGeraetewartLogin, setShowGeraetewartLogin] = useState(false);
   const [guestBootstrapping, setGuestBootstrapping] = useState(false);
 
@@ -90,6 +108,12 @@ export default function App() {
 
     bootstrapGuestAccess();
   }, [user, showGeraetewartLogin, guestBootstrapping]);
+
+  useEffect(() => {
+    localStorage.setItem(DARKMODE_STORAGE_KEY, darkMode ? "true" : "false");
+    document.documentElement.classList.toggle("theme-dark", darkMode);
+    document.documentElement.style.colorScheme = darkMode ? "dark" : "light";
+  }, [darkMode]);
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -167,7 +191,8 @@ export default function App() {
               checked={darkMode}
               onChange={(e) => setDarkMode(e.target.checked)}
             />
-            <span>Dark</span>
+            <span className="switch-slider" aria-hidden="true" />
+            <span className="switch-text">Dark</span>
           </label>
           {user.role === "geraetewart" ? (
             <button type="button" className="btn-ghost" onClick={handleLogout}>
