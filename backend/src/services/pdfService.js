@@ -134,3 +134,64 @@ export function buildReportPdf({ report, checks, defects }) {
     }
   });
 }
+
+export function buildDefectSummaryPdf({ title, generatedBy, defects, filters }) {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ margin: 40, size: "A4", bufferPages: true });
+      const chunks = [];
+
+      doc.on("data", (chunk) => chunks.push(chunk));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+
+      doc.fontSize(19).text(title || "Mängel-Sammelübersicht", { align: "left" });
+      doc.moveDown(0.5);
+      doc.fontSize(10).text(`Erstellt: ${dayjs().format("DD.MM.YYYY HH:mm")}`);
+      doc.text(`Erstellt von: ${generatedBy || "geraetewart"}`);
+      doc.text(`Filter: Priorität=${filters?.priority || "alle"}, Status=${filters?.status || "alle"}, Fahrzeug=${filters?.vehicleKey || "alle"}`);
+      if (filters?.resolvedSinceHours) {
+        doc.text(`Zusatzfilter: Behoben seit ${filters.resolvedSinceHours}h`);
+      }
+      doc.moveDown();
+
+      if (!defects || defects.length === 0) {
+        doc.fontSize(11).text("Keine Mängel für den aktuellen Filter gefunden.");
+      } else {
+        defects.forEach((defect, index) => {
+          const priorityColor = PRIORITY_COLORS[defect.priority] || "#000000";
+          const statusLabel = defect.resolved_at
+            ? `Behoben (${dayjs(defect.resolved_at).format("DD.MM.YYYY HH:mm")})`
+            : "Offen";
+
+          doc
+            .fontSize(10)
+            .fillColor(priorityColor)
+            .text(`${index + 1}. ${defect.vehicle_name} - ${defect.item_label}`, { continued: true })
+            .fillColor("#000000")
+            .text(`  | Priorität: ${defect.priority} | Status: ${statusLabel}`)
+            .text(`   Beschreibung: ${defect.description_text}`)
+            .text(`   Erfasst: ${dayjs(defect.timestamp).format("DD.MM.YYYY HH:mm")} von ${defect.username}`)
+            .moveDown(0.35);
+        });
+      }
+
+      const totalPages = doc.bufferedPageRange().count;
+      for (let i = 0; i < totalPages; i++) {
+        doc.switchToPage(i);
+        doc
+          .fontSize(9)
+          .fillColor("#888888")
+          .text(
+            `Seite ${i + 1} von ${totalPages}`,
+            doc.page.margins.left,
+            doc.page.height - doc.page.margins.bottom - 12,
+            { align: "right", width: doc.page.width - doc.page.margins.left - doc.page.margins.right }
+          );
+      }
+
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}

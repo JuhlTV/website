@@ -633,6 +633,39 @@ button:disabled {
   font-size: 0.78rem;
 }
 
+.dashboard-grid {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.dashboard-kpi {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--fw-red);
+  border-radius: 4px;
+  background: var(--surface-2);
+  padding: 0.65rem 0.75rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.dashboard-kpi strong {
+  font-family: var(--font-head);
+  font-size: 1.25rem;
+  color: var(--text);
+}
+
+.dashboard-kpi span {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .history-priority {
   display: flex;
   gap: 0.4rem;

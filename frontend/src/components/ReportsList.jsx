@@ -17,6 +17,8 @@ export default function ReportsList({ user, refreshToken }) {
   const [loading, setLoading] = useState(true);
   const [emailTarget, setEmailTarget] = useState(null); // { reportId, input, sending, error }
   const [resolvingDefectId, setResolvingDefectId] = useState("");
+  const [dashboard, setDashboard] = useState(null);
+  const [exportingDefectsPdf, setExportingDefectsPdf] = useState(false);
 
   useEffect(() => {
     async function loadVehicles() {
@@ -30,6 +32,19 @@ export default function ReportsList({ user, refreshToken }) {
 
     loadVehicles();
   }, []);
+
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        const data = await apiRequest("/reports/dashboard");
+        setDashboard(data);
+      } catch {
+        // Non-critical dashboard data.
+      }
+    }
+
+    loadDashboard();
+  }, [refreshToken]);
 
   useEffect(() => {
     async function loadReports() {
@@ -118,6 +133,31 @@ export default function ReportsList({ user, refreshToken }) {
     loadHistory();
   }, [refreshToken, historyVehicleFilter]);
 
+  async function exportDefectsPdf() {
+    setDefectError("");
+    setExportingDefectsPdf(true);
+    try {
+      const params = new URLSearchParams();
+      if (priorityFilter !== "alle") params.set("priority", priorityFilter);
+      if (defectStatusFilter !== "alle") params.set("status", defectStatusFilter);
+      if (defectVehicleFilter !== "alle") params.set("vehicleKey", defectVehicleFilter);
+      if (defectStatusFilter === "behoben") params.set("resolvedSinceHours", "24");
+
+      const query = params.toString() ? `?${params.toString()}` : "";
+      const blob = await apiRequest(`/reports/defects/export-pdf${query}`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `maengel-sammeluebersicht-${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDefectError(err.message);
+    } finally {
+      setExportingDefectsPdf(false);
+    }
+  }
+
   async function downloadPdf(reportId) {
     try {
       const blob = await apiRequest(`/reports/${reportId}/pdf`);
@@ -161,6 +201,29 @@ export default function ReportsList({ user, refreshToken }) {
 
   return (
     <div className="panel-stack">
+      <div className="card">
+        <div className="card-header">Gerätewart Übersicht</div>
+        <div className="dashboard-grid" style={{ marginTop: "0.8rem" }}>
+          <div className="dashboard-kpi">
+            <strong>{dashboard?.critical_open_today ?? "-"}</strong>
+            <span>Heute fällige kritische offene Mängel</span>
+          </div>
+          <div className="dashboard-kpi">
+            <strong>{dashboard?.vehicles_without_open_defects_total ?? "-"}</strong>
+            <span>Fahrzeuge ohne offenen Mangel</span>
+          </div>
+          <div className="dashboard-kpi">
+            <strong>{dashboard?.resolved_last_24h ?? "-"}</strong>
+            <span>Behoben in den letzten 24h</span>
+          </div>
+        </div>
+        {dashboard?.vehicles_without_open_defects?.length ? (
+          <p style={{ marginTop: "0.8rem", color: "var(--muted)" }}>
+            Ohne offene Mängel: {dashboard.vehicles_without_open_defects.map((v) => v.name).join(", ")}
+          </p>
+        ) : null}
+      </div>
+
       <div className="card">
         <div className="card-header">Berichte</div>
         <div className="section-head" style={{ marginTop: "0.8rem" }}>
@@ -248,6 +311,37 @@ export default function ReportsList({ user, refreshToken }) {
       <div className="card">
         <div className="card-header">Mängelübersicht</div>
         {defectError ? <div className="error-box" style={{ marginTop: "0.8rem" }}>{defectError}</div> : null}
+
+        <div className="quick-actions" style={{ marginBottom: "0.7rem" }}>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => {
+              setPriorityFilter("kritisch");
+              setDefectStatusFilter("offen");
+            }}
+          >
+            Nur kritische offene Mängel
+          </button>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => {
+              setPriorityFilter("alle");
+              setDefectStatusFilter("behoben");
+            }}
+          >
+            Behobene letzte 24h
+          </button>
+          <button
+            type="button"
+            className="btn-ghost"
+            disabled={exportingDefectsPdf}
+            onClick={exportDefectsPdf}
+          >
+            {exportingDefectsPdf ? "Export läuft..." : "PDF-Sammel-Export"}
+          </button>
+        </div>
 
         <div className="inline-fields">
           <label>

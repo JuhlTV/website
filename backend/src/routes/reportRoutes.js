@@ -3,9 +3,9 @@ import crypto from "crypto";
 import dayjs from "dayjs";
 import { optionalAuth, requireAuth, requireRole } from "../middleware/auth.js";
 import { createRateLimiter } from "../middleware/rateLimit.js";
-import { findVehicleByKey } from "../config/vehicles.js";
+import { findVehicleByKey, getVehiclesWithChecklist } from "../config/vehicles.js";
 import { validateChecklistPayload } from "../utils/validators.js";
-import { buildReportPdf } from "../services/pdfService.js";
+import { buildDefectSummaryPdf, buildReportPdf } from "../services/pdfService.js";
 import { sendReportEmail } from "../services/mailService.js";
 import {
   createReport,
@@ -145,6 +145,58 @@ function validateChecksAgainstVehicle(checks, vehicle) {
   return null;
 }
 
+function collectDefects(reports, { priority, vehicleKey, status, resolvedSinceHours } = {}) {
+  const defects = [];
+  const resolvedSinceMs = resolvedSinceHours
+    ? Date.now() - Number(resolvedSinceHours) * 60 * 60 * 1000
+    : null;
+
+  for (const report of reports) {
+    if (vehicleKey && report.vehicleKey !== String(vehicleKey)) {
+      continue;
+    }
+
+    for (const defect of report.defects || []) {
+      if (priority && defect.priority !== String(priority)) {
+        continue;
+      }
+
+      const isResolved = Boolean(defect.resolvedAt);
+      if (status === "offen" && isResolved) {
+        continue;
+      }
+      if (status === "behoben" && !isResolved) {
+        continue;
+      }
+
+      if (resolvedSinceMs && defect.resolvedAt) {
+        const resolvedAtMs = new Date(defect.resolvedAt).getTime();
+        if (!Number.isFinite(resolvedAtMs) || resolvedAtMs < resolvedSinceMs) {
+          continue;
+        }
+      }
+
+      defects.push({
+        id: getDefectId(report.id, defect),
+        item_label: defect.itemLabel,
+        description_text: defect.descriptionText,
+        priority: defect.priority,
+        timestamp: defect.timestamp,
+        username: defect.username,
+        resolved_at: defect.resolvedAt || null,
+        resolved_by: defect.resolvedBy || null,
+        report_id: report.id,
+        vehicle_key: report.vehicleKey,
+        vehicle_name: report.vehicleName,
+        report_created_at: report.createdAt
+      });
+    }
+  }
+
+  defects.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return defects;
+}
+
 router.post("/", optionalAuth, reportCreateLimiter, async (req, res) => {
   const validationError = validateChecklistPayload(req.body);
   if (validationError) {
@@ -252,7 +304,7 @@ router.get("/", requireAuth, requireRole("geraetewart"), async (req, res) => {
 });
 
 router.get("/defects", requireAuth, requireRole("geraetewart"), async (req, res) => {
-  const { priority, vehicleKey, status } = req.query;
+  const { priority, vehicleKey, status, resolvedSinceHours } = req.query;
 
   if (priority && !["niedrig", "mittel", "kritisch"].includes(String(priority))) {
     return res.status(400).json({ message: "Ungültige Priorität" });
@@ -262,46 +314,18 @@ router.get("/defects", requireAuth, requireRole("geraetewart"), async (req, res)
     return res.status(400).json({ message: "Ungültiger Mängelstatus" });
   }
 
+  if (resolvedSinceHours && (!Number.isFinite(Number(resolvedSinceHours)) || Number(resolvedSinceHours) <= 0)) {
+    return res.status(400).json({ message: "Ungültiger Zeitraum" });
+  }
+
   try {
     const reports = await listReportsByUser(req.user);
-    const filteredReports = reports.filter(
-      (report) => !vehicleKey || report.vehicleKey === String(vehicleKey)
-    );
-
-    const defects = [];
-
-    for (const report of filteredReports) {
-      for (const defect of report.defects || []) {
-        if (priority && defect.priority !== String(priority)) {
-          continue;
-        }
-
-        const isResolved = Boolean(defect.resolvedAt);
-        if (status === "offen" && isResolved) {
-          continue;
-        }
-        if (status === "behoben" && !isResolved) {
-          continue;
-        }
-
-        defects.push({
-          id: getDefectId(report.id, defect),
-          item_label: defect.itemLabel,
-          description_text: defect.descriptionText,
-          priority: defect.priority,
-          timestamp: defect.timestamp,
-          username: defect.username,
-          resolved_at: defect.resolvedAt || null,
-          resolved_by: defect.resolvedBy || null,
-          report_id: report.id,
-          vehicle_key: report.vehicleKey,
-          vehicle_name: report.vehicleName,
-          report_created_at: report.createdAt
-        });
-      }
-    }
-
-    defects.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const defects = collectDefects(reports, {
+      priority,
+      vehicleKey,
+      status,
+      resolvedSinceHours: resolvedSinceHours ? Number(resolvedSinceHours) : null
+    });
 
     const summaryMap = new Map();
     for (const defect of defects) {
@@ -348,6 +372,92 @@ router.get("/history", requireAuth, requireRole("geraetewart"), async (req, res)
     return res.json({ history });
   } catch (error) {
     return res.status(500).json({ message: "Fehler beim Laden des Verlaufs", error: error.message });
+  }
+});
+
+router.get("/dashboard", requireAuth, requireRole("geraetewart"), async (req, res) => {
+  try {
+    const reports = await listReportsByUser(req.user);
+    const allDefects = collectDefects(reports, { status: "alle" });
+    const openDefects = allDefects.filter((defect) => !defect.resolved_at);
+
+    const todayStart = dayjs().startOf("day");
+    const criticalOpenToday = openDefects.filter((defect) => {
+      if (defect.priority !== "kritisch") {
+        return false;
+      }
+      const defectTime = dayjs(defect.timestamp);
+      return defectTime.isValid() && (defectTime.isAfter(todayStart) || defectTime.isSame(todayStart));
+    }).length;
+
+    const vehicles = getVehiclesWithChecklist();
+    const openVehicleKeySet = new Set(openDefects.map((defect) => defect.vehicle_key));
+    const vehiclesWithoutOpenDefects = vehicles
+      .filter((vehicle) => !openVehicleKeySet.has(vehicle.key))
+      .map((vehicle) => ({ key: vehicle.key, name: vehicle.name }));
+
+    const resolvedLast24h = allDefects.filter((defect) => {
+      if (!defect.resolved_at) {
+        return false;
+      }
+      const resolvedAtMs = new Date(defect.resolved_at).getTime();
+      return Number.isFinite(resolvedAtMs) && resolvedAtMs >= Date.now() - 24 * 60 * 60 * 1000;
+    }).length;
+
+    return res.json({
+      critical_open_today: criticalOpenToday,
+      open_defects_total: openDefects.length,
+      resolved_last_24h: resolvedLast24h,
+      vehicles_without_open_defects: vehiclesWithoutOpenDefects,
+      vehicles_without_open_defects_total: vehiclesWithoutOpenDefects.length
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Dashboard konnte nicht geladen werden", error: error.message });
+  }
+});
+
+router.get("/defects/export-pdf", requireAuth, requireRole("geraetewart"), async (req, res) => {
+  const { priority, vehicleKey, status, resolvedSinceHours } = req.query;
+
+  if (priority && !["niedrig", "mittel", "kritisch"].includes(String(priority))) {
+    return res.status(400).json({ message: "Ungültige Priorität" });
+  }
+
+  if (status && !["alle", "offen", "behoben"].includes(String(status))) {
+    return res.status(400).json({ message: "Ungültiger Mängelstatus" });
+  }
+
+  if (resolvedSinceHours && (!Number.isFinite(Number(resolvedSinceHours)) || Number(resolvedSinceHours) <= 0)) {
+    return res.status(400).json({ message: "Ungültiger Zeitraum" });
+  }
+
+  try {
+    const reports = await listReportsByUser(req.user);
+    const defects = collectDefects(reports, {
+      priority,
+      vehicleKey,
+      status,
+      resolvedSinceHours: resolvedSinceHours ? Number(resolvedSinceHours) : null
+    });
+
+    const pdfBuffer = await buildDefectSummaryPdf({
+      title: "Mängel-Sammelübersicht",
+      generatedBy: req.user?.username,
+      defects,
+      filters: {
+        priority: priority || "alle",
+        status: status || "alle",
+        vehicleKey: vehicleKey || "alle",
+        resolvedSinceHours: resolvedSinceHours ? Number(resolvedSinceHours) : null
+      }
+    });
+
+    const timestamp = dayjs().format("YYYYMMDD-HHmm");
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=maengel-sammeluebersicht-${timestamp}.pdf`);
+    return res.send(pdfBuffer);
+  } catch (error) {
+    return res.status(500).json({ message: "Sammel-PDF konnte nicht erstellt werden", error: error.message });
   }
 });
 
