@@ -8,6 +8,7 @@
   --fw-red: #c1001f;
   --fw-red-dark: #960018;
   --fw-amber: #ffb400;
+  --fw-amber-dark: #d38a00;
   --fw-black: #1a1a1a;
   --fw-nav: #111111;
 
@@ -217,11 +218,13 @@ p {
   padding: 0.4rem 0.85rem;
   font-size: 0.82rem;
   border-radius: 3px;
-  background: var(--fw-red);
+  background: linear-gradient(180deg, #d0183a 0%, #9a001b 100%);
+  border: 1px solid #7c0015;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .topbar-actions button:hover {
-  background: var(--fw-red-dark);
+  background: linear-gradient(180deg, #e12a4b 0%, #ab001f 100%);
   transform: none;
 }
 
@@ -368,8 +371,19 @@ p {
   align-items: center;
   margin-bottom: 0.9rem;
   gap: 0.5rem;
-  padding-bottom: 0.6rem;
+  padding: 0.4rem 0.45rem 0.5rem;
   border-bottom: 2px solid var(--fw-red);
+  border-top: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(193, 0, 31, 0.04), rgba(193, 0, 31, 0.01)),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 180, 0, 0.08) 0,
+      rgba(255, 180, 0, 0.08) 10px,
+      transparent 10px,
+      transparent 22px
+    );
+  border-radius: 3px;
 }
 
 .section-head h2 {
@@ -379,6 +393,19 @@ p {
 
 .app-root.dark .section-head h2 {
   color: #eee;
+}
+
+.app-root.dark .section-head {
+  border-top-color: #3b3b3b;
+  background:
+    linear-gradient(180deg, rgba(193, 0, 31, 0.15), rgba(193, 0, 31, 0.03)),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 180, 0, 0.1) 0,
+      rgba(255, 180, 0, 0.1) 10px,
+      transparent 10px,
+      transparent 22px
+    );
 }
 
 /* ── Badges ───────────────────────────────────────────────── */
@@ -558,16 +585,37 @@ button:disabled {
 
 .vehicle-meta {
   border-left: 4px solid var(--fw-red);
-  background: #fef5f5;
+  background:
+    linear-gradient(180deg, #fff8f8 0%, #fff4f4 100%);
   padding: 0.65rem 0.9rem;
   margin-bottom: 1rem;
   display: grid;
   gap: 0.15rem;
   border-radius: 0 3px 3px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.vehicle-meta::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 76px;
+  height: 100%;
+  opacity: 0.5;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(255, 180, 0, 0.2) 0,
+    rgba(255, 180, 0, 0.2) 8px,
+    transparent 8px,
+    transparent 16px
+  );
+  pointer-events: none;
 }
 
 .app-root.dark .vehicle-meta {
-  background: rgba(193, 0, 31, 0.08);
+  background: linear-gradient(180deg, rgba(193, 0, 31, 0.2), rgba(193, 0, 31, 0.08));
 }
 
 .vehicle-meta p {
@@ -580,14 +628,33 @@ button:disabled {
   border-radius: 3px;
   padding: 0.65rem 0.8rem;
   background: var(--surface);
+  position: relative;
+  overflow: hidden;
+}
+
+.check-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--fw-red), #7f0017);
+  opacity: 0.8;
 }
 
 .check-row:hover {
-  border-color: #bbb;
+  border-color: #c1001f66;
+  box-shadow: 0 3px 12px rgba(193, 0, 31, 0.1);
 }
 
 .app-root.dark .check-row {
   background: var(--surface-2);
+}
+
+.app-root.dark .check-row:hover {
+  border-color: #7e3642;
+  box-shadow: 0 3px 12px rgba(193, 0, 31, 0.24);
 }
 
 .check-title {
@@ -615,6 +682,10 @@ button:disabled {
   margin: 0;
   font-weight: 600;
   font-size: 0.88rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  background: #fff;
 }
 
 .status-check input {
@@ -622,11 +693,17 @@ button:disabled {
   accent-color: var(--fw-red);
 }
 
+.app-root.dark .status-check {
+  border-color: #4b4b4b;
+  background: #292929;
+}
+
 .defect-box {
   border-left: 4px solid var(--fw-red);
   margin-top: 0.5rem;
   padding-left: 0.75rem;
-  background: rgba(193, 0, 31, 0.04);
+  background:
+    linear-gradient(90deg, rgba(193, 0, 31, 0.14), rgba(193, 0, 31, 0.03) 44%, transparent 100%);
   border-radius: 0 3px 3px 0;
   padding-top: 0.4rem;
   padding-bottom: 0.4rem;
@@ -637,6 +714,24 @@ button:disabled {
   margin-top: 0.9rem;
   border-top: 1px solid var(--border);
   padding-top: 0.7rem;
+  position: relative;
+}
+
+.signature-block::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -1px;
+  width: 120px;
+  height: 5px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--fw-amber) 0,
+    var(--fw-amber) 9px,
+    #1a1a1a 9px,
+    #1a1a1a 18px
+  );
 }
 
 .signature-canvas {
