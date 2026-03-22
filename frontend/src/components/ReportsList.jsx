@@ -1,16 +1,71 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "../api/client";
 
+const DEFECT_FILTER_DEFAULTS = {
+  priority: "alle",
+  status: "offen",
+  vehicleKey: "alle"
+};
+
+const REPORTS_FILTER_STATE_KEY = "fw_reports_filter_state_v1";
+const REPORTS_SAVED_FILTERS_KEY = "fw_saved_defect_filters_v1";
+
+function loadStoredFilterState() {
+  try {
+    const raw = window.localStorage.getItem(REPORTS_FILTER_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return {
+      priority: parsed?.priority || DEFECT_FILTER_DEFAULTS.priority,
+      status: parsed?.status || DEFECT_FILTER_DEFAULTS.status,
+      vehicleKey: parsed?.vehicleKey || DEFECT_FILTER_DEFAULTS.vehicleKey,
+      historyVehicleKey: parsed?.historyVehicleKey || "alle"
+    };
+  } catch {
+    return null;
+  }
+}
+
+function loadStoredSavedFilters() {
+  try {
+    const raw = window.localStorage.getItem(REPORTS_SAVED_FILTERS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item) => item && typeof item === "object")
+      .map((item) => ({
+        id: item.id || `${Date.now()}-${Math.random()}`,
+        name: item.name || "Unbenannter Filter",
+        priority: item.priority || DEFECT_FILTER_DEFAULTS.priority,
+        status: item.status || DEFECT_FILTER_DEFAULTS.status,
+        vehicleKey: item.vehicleKey || DEFECT_FILTER_DEFAULTS.vehicleKey
+      }));
+  } catch {
+    return [];
+  }
+}
+
 export default function ReportsList({ user, refreshToken }) {
+  const initialFilterState = loadStoredFilterState();
   const [reports, setReports] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [defects, setDefects] = useState([]);
   const [defectSummary, setDefectSummary] = useState([]);
   const [history, setHistory] = useState([]);
-  const [priorityFilter, setPriorityFilter] = useState("alle");
-  const [defectStatusFilter, setDefectStatusFilter] = useState("offen");
-  const [defectVehicleFilter, setDefectVehicleFilter] = useState("alle");
-  const [historyVehicleFilter, setHistoryVehicleFilter] = useState("alle");
+  const [priorityFilter, setPriorityFilter] = useState(
+    initialFilterState?.priority || DEFECT_FILTER_DEFAULTS.priority
+  );
+  const [defectStatusFilter, setDefectStatusFilter] = useState(
+    initialFilterState?.status || DEFECT_FILTER_DEFAULTS.status
+  );
+  const [defectVehicleFilter, setDefectVehicleFilter] = useState(
+    initialFilterState?.vehicleKey || DEFECT_FILTER_DEFAULTS.vehicleKey
+  );
+  const [historyVehicleFilter, setHistoryVehicleFilter] = useState(
+    initialFilterState?.historyVehicleKey || "alle"
+  );
+  const [savedFilters, setSavedFilters] = useState(() => loadStoredSavedFilters());
   const [reportError, setReportError] = useState("");
   const [defectError, setDefectError] = useState("");
   const [historyError, setHistoryError] = useState("");
@@ -20,6 +75,70 @@ export default function ReportsList({ user, refreshToken }) {
   const [dashboard, setDashboard] = useState(null);
   const [exportingDefectsPdf, setExportingDefectsPdf] = useState(false);
   const [exportingDefectsCsv, setExportingDefectsCsv] = useState(false);
+
+  const currentDefectFilters = {
+    priority: priorityFilter,
+    status: defectStatusFilter,
+    vehicleKey: defectVehicleFilter
+  };
+
+  function applyDefectFilters(filters) {
+    setPriorityFilter(filters.priority || DEFECT_FILTER_DEFAULTS.priority);
+    setDefectStatusFilter(filters.status || DEFECT_FILTER_DEFAULTS.status);
+    setDefectVehicleFilter(filters.vehicleKey || DEFECT_FILTER_DEFAULTS.vehicleKey);
+  }
+
+  function resetAllFilters() {
+    applyDefectFilters(DEFECT_FILTER_DEFAULTS);
+    setHistoryVehicleFilter("alle");
+  }
+
+  function saveCurrentFilterPreset() {
+    const name = window.prompt("Namen für den Filter eingeben", "Mein Filter");
+    if (!name) return;
+
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+
+    const next = [
+      {
+        id: `${Date.now()}-${Math.random()}`,
+        name: trimmedName,
+        ...currentDefectFilters
+      },
+      ...savedFilters
+    ].slice(0, 8);
+
+    setSavedFilters(next);
+  }
+
+  function removeSavedFilterPreset(id) {
+    setSavedFilters((prev) => prev.filter((item) => item.id !== id));
+  }
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(REPORTS_SAVED_FILTERS_KEY, JSON.stringify(savedFilters));
+    } catch {
+      // Non-critical persistence.
+    }
+  }, [savedFilters]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        REPORTS_FILTER_STATE_KEY,
+        JSON.stringify({
+          priority: priorityFilter,
+          status: defectStatusFilter,
+          vehicleKey: defectVehicleFilter,
+          historyVehicleKey: historyVehicleFilter
+        })
+      );
+    } catch {
+      // Non-critical persistence.
+    }
+  }, [priorityFilter, defectStatusFilter, defectVehicleFilter, historyVehicleFilter]);
 
   useEffect(() => {
     async function loadVehicles() {
@@ -404,6 +523,13 @@ export default function ReportsList({ user, refreshToken }) {
           >
             {exportingDefectsCsv ? "CSV läuft..." : "CSV-Export"}
           </button>
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={resetAllFilters}
+          >
+            Filter zurücksetzen
+          </button>
         </div>
 
         <div className="inline-fields defect-filter-grid">
@@ -449,6 +575,48 @@ export default function ReportsList({ user, refreshToken }) {
               ))}
             </select>
           </label>
+        </div>
+
+        <div className="saved-filter-row">
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={saveCurrentFilterPreset}
+          >
+            Aktuellen Filter speichern
+          </button>
+          {savedFilters.length === 0 ? (
+            <span className="saved-filter-hint">Noch keine gespeicherten Filter.</span>
+          ) : (
+            <div className="saved-filter-list">
+              {savedFilters.map((preset) => {
+                const isActive =
+                  preset.priority === currentDefectFilters.priority &&
+                  preset.status === currentDefectFilters.status &&
+                  preset.vehicleKey === currentDefectFilters.vehicleKey;
+
+                return (
+                  <div key={preset.id} className="saved-filter-item">
+                    <button
+                      type="button"
+                      className={`btn-ghost saved-filter-load ${isActive ? "is-active" : ""}`}
+                      onClick={() => applyDefectFilters(preset)}
+                    >
+                      {preset.name}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost saved-filter-delete"
+                      onClick={() => removeSavedFilterPreset(preset.id)}
+                      aria-label={`Filter ${preset.name} löschen`}
+                    >
+                      X
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="summary-row">
