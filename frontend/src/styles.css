@@ -9,6 +9,7 @@
   --fw-red-dark: #960018;
   --fw-amber: #ffb400;
   --fw-amber-dark: #d38a00;
+  --fw-blue-night: #3a7dff;
   --fw-black: #1a1a1a;
   --fw-nav: #111111;
 
@@ -1141,12 +1142,16 @@ button:disabled {
 }
 
 .app-root.dark .dashboard-kpi.warning-immediate {
-  background: rgba(180, 35, 24, 0.2);
+  background:
+    linear-gradient(120deg, rgba(58, 125, 255, 0.16) 0%, rgba(58, 125, 255, 0.04) 26%, transparent 56%),
+    rgba(180, 35, 24, 0.2);
   border-left-color: #ff6b6b;
+  box-shadow: inset 0 0 0 1px rgba(58, 125, 255, 0.22);
 }
 
 .app-root.dark .dashboard-kpi.warning-immediate strong {
   color: #ff8d8d;
+  text-shadow: 0 0 8px rgba(58, 125, 255, 0.24);
 }
 
 .app-root.dark .dashboard-kpi.warning strong,
@@ -1165,9 +1170,11 @@ button:disabled {
 }
 
 .app-root.dark .badge.escalation.immediate {
-  background: rgba(180, 35, 24, 0.2);
+  background:
+    linear-gradient(120deg, rgba(58, 125, 255, 0.2) 0%, rgba(58, 125, 255, 0.06) 45%, transparent 70%),
+    rgba(180, 35, 24, 0.2);
   color: #ff8d8d;
-  border-color: #ff6b6b;
+  border-color: #7ca8ff;
 }
 
 .quick-actions {
@@ -1519,6 +1526,7 @@ button:disabled {
 .app-root.dark .defect-priority-kritisch {
   border-color: rgba(255, 107, 107, 0.35);
   background:
+    linear-gradient(115deg, rgba(58, 125, 255, 0.2) 0%, rgba(58, 125, 255, 0.05) 24%, transparent 54%),
     linear-gradient(90deg, rgba(193, 0, 31, 0.26) 0%, rgba(193, 0, 31, 0.08) 28%, transparent 72%),
     linear-gradient(180deg, rgba(42, 42, 42, 0.92), rgba(32, 32, 32, 0.95));
 }
@@ -1530,6 +1538,7 @@ button:disabled {
 
 .app-root.dark .defect-priority-kritisch strong {
   color: #ff9fa9;
+  text-shadow: 0 0 8px rgba(58, 125, 255, 0.24);
 }
 
 .app-root.dark .defect-priority-mittel {
@@ -1557,7 +1566,12 @@ button:disabled {
 .app-root.dark .defect-escalation-sofort_handeln {
   box-shadow:
     inset 0 0 0 1px rgba(255, 107, 107, 0.44),
-    0 0 0 2px rgba(255, 107, 107, 0.12);
+    0 0 0 2px rgba(255, 107, 107, 0.12),
+    0 0 0 5px rgba(58, 125, 255, 0.12);
+}
+
+.app-root.dark .defect-open.defect-escalation-sofort_handeln {
+  animation: dispatchAlertPulse 2.4s ease-in-out infinite, blueAlarmPulse 2.4s ease-in-out infinite;
 }
 
 .history-item {
@@ -1757,10 +1771,21 @@ button:disabled {
   }
 }
 
+@keyframes blueAlarmPulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgba(58, 125, 255, 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 5px rgba(58, 125, 255, 0.34));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .topbar::before,
   .dashboard-kpi.warning-immediate,
-  .defect-open.defect-escalation-sofort_handeln {
+  .defect-open.defect-escalation-sofort_handeln,
+  .app-root.dark .defect-open.defect-escalation-sofort_handeln {
     animation: none;
   }
 }
