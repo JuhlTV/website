@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiRequest } from "../api/client";
 
 const DEFECT_FILTER_DEFAULTS = {
@@ -111,6 +111,9 @@ export default function ReportsList({ user, refreshToken }) {
   const [dashboard, setDashboard] = useState(null);
   const [exportingDefectsPdf, setExportingDefectsPdf] = useState(false);
   const [exportingDefectsCsv, setExportingDefectsCsv] = useState(false);
+  const [resolveSnackbar, setResolveSnackbar] = useState(null);
+  const [undoBusy, setUndoBusy] = useState(false);
+  const undoTimerRef = useRef(null);
 
   const currentDefectFilters = {
     priority: priorityFilter,
@@ -122,6 +125,65 @@ export default function ReportsList({ user, refreshToken }) {
     setPriorityFilter(filters.priority || DEFECT_FILTER_DEFAULTS.priority);
     setDefectStatusFilter(filters.status || DEFECT_FILTER_DEFAULTS.status);
     setDefectVehicleFilter(filters.vehicleKey || DEFECT_FILTER_DEFAULTS.vehicleKey);
+  }
+
+  function buildDefectQuery() {
+    const params = new URLSearchParams();
+    if (priorityFilter !== "alle") params.set("priority", priorityFilter);
+    if (defectStatusFilter !== "alle") params.set("status", defectStatusFilter);
+    if (defectVehicleFilter !== "alle") params.set("vehicleKey", defectVehicleFilter);
+    return params.toString() ? `?${params.toString()}` : "";
+  }
+
+  async function reloadDefects({ handleUnauthorized = true } = {}) {
+    const query = buildDefectQuery();
+    const data = await apiRequest(`/reports/defects${query}`, { handleUnauthorized });
+    setDefects(data.defects || []);
+    setDefectSummary(data.summary || []);
+  }
+
+  function clearUndoTimer() {
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+  }
+
+  function openResolveSnackbar(defect) {
+    clearUndoTimer();
+    setUndoBusy(false);
+    setResolveSnackbar({
+      defectId: defect.id,
+      vehicleName: defect.vehicle_name,
+      itemLabel: defect.item_label
+    });
+
+    undoTimerRef.current = setTimeout(() => {
+      setResolveSnackbar(null);
+      undoTimerRef.current = null;
+    }, 5000);
+  }
+
+  async function undoResolve() {
+    if (!resolveSnackbar || undoBusy) return;
+
+    setUndoBusy(true);
+    setDefectError("");
+    try {
+      await apiRequest(`/reports/defects/${encodeURIComponent(resolveSnackbar.defectId)}/resolve`, {
+        method: "PATCH",
+        body: JSON.stringify({ resolve: false }),
+        handleUnauthorized: false
+      });
+
+      await reloadDefects({ handleUnauthorized: false });
+      clearUndoTimer();
+      setResolveSnackbar(null);
+    } catch (err) {
+      setDefectError(err.message || "Rückgängig fehlgeschlagen");
+    } finally {
+      setUndoBusy(false);
+    }
   }
 
   function resetAllFilters() {
@@ -262,21 +324,7 @@ export default function ReportsList({ user, refreshToken }) {
   useEffect(() => {
     async function loadDefects() {
       try {
-        const params = new URLSearchParams();
-        if (priorityFilter !== "alle") {
-          params.set("priority", priorityFilter);
-        }
-        if (defectStatusFilter !== "alle") {
-          params.set("status", defectStatusFilter);
-        }
-        if (defectVehicleFilter !== "alle") {
-          params.set("vehicleKey", defectVehicleFilter);
-        }
-
-        const query = params.toString() ? `?${params.toString()}` : "";
-        const data = await apiRequest(`/reports/defects${query}`);
-        setDefects(data.defects || []);
-        setDefectSummary(data.summary || []);
+        await reloadDefects();
       } catch (err) {
         setDefectError(err.message);
       }
@@ -284,6 +332,8 @@ export default function ReportsList({ user, refreshToken }) {
 
     loadDefects();
   }, [refreshToken, priorityFilter, defectStatusFilter, defectVehicleFilter]);
+
+  useEffect(() => () => clearUndoTimer(), []);
 
   async function toggleDefectResolve(defect) {
     const shouldResolve = !defect.resolved_at;
@@ -296,16 +346,14 @@ export default function ReportsList({ user, refreshToken }) {
         handleUnauthorized: false
       });
 
-      const params = new URLSearchParams();
-      if (priorityFilter !== "alle") params.set("priority", priorityFilter);
-      if (defectStatusFilter !== "alle") params.set("status", defectStatusFilter);
-      if (defectVehicleFilter !== "alle") params.set("vehicleKey", defectVehicleFilter);
-      const query = params.toString() ? `?${params.toString()}` : "";
-      const data = await apiRequest(`/reports/defects${query}`, {
-        handleUnauthorized: false
-      });
-      setDefects(data.defects || []);
-      setDefectSummary(data.summary || []);
+      await reloadDefects({ handleUnauthorized: false });
+
+      if (shouldResolve) {
+        openResolveSnackbar(defect);
+      } else {
+        clearUndoTimer();
+        setResolveSnackbar(null);
+      }
     } catch (err) {
       if (/401/.test(String(err?.message || ""))) {
         setDefectError("Sitzung nicht bestätigt. Bitte erneut einloggen.");
@@ -836,6 +884,23 @@ export default function ReportsList({ user, refreshToken }) {
           ))}
         </div>
       </div>
+
+      {resolveSnackbar ? (
+        <div className="resolve-snackbar" role="status" aria-live="polite">
+          <div className="resolve-snackbar-text">
+            <strong>Mangel als behoben markiert</strong>
+            <span>{resolveSnackbar.vehicleName}: {resolveSnackbar.itemLabel}</span>
+          </div>
+          <button
+            type="button"
+            className="resolve-snackbar-undo"
+            onClick={undoResolve}
+            disabled={undoBusy}
+          >
+            {undoBusy ? "Rückgängig..." : "Rückgängig (5s)"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
