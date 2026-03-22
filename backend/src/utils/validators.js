@@ -1,5 +1,5 @@
 export function validateChecklistPayload(payload) {
-  const { vehicleKey, checks, username } = payload;
+  const { vehicleKey, checks, username, signatureDataUrl } = payload;
 
   if (!vehicleKey || typeof vehicleKey !== "string") {
     return "vehicleKey fehlt oder ist ungültig";
@@ -11,6 +11,23 @@ export function validateChecklistPayload(payload) {
 
   if (!Array.isArray(checks) || checks.length === 0) {
     return "checks muss eine nicht leere Liste sein";
+  }
+
+  if (!signatureDataUrl || typeof signatureDataUrl !== "string") {
+    return "Unterschrift fehlt";
+  }
+
+  const normalizedSignature = signatureDataUrl.trim();
+  if (normalizedSignature.length < 100) {
+    return "Unterschrift ist unvollständig";
+  }
+
+  if (normalizedSignature.length > 1_500_000) {
+    return "Unterschrift ist zu groß";
+  }
+
+  if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(normalizedSignature)) {
+    return "Unterschrift hat ein ungültiges Format";
   }
 
   for (const item of checks) {

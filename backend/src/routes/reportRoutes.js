@@ -66,7 +66,8 @@ function buildPdfPayloadFromReport(report) {
   const pdfReport = {
     created_at: report.createdAt,
     vehicle_name: report.vehicleName,
-    username: report.username
+    username: report.username,
+    signature_data_url: report.signatureDataUrl || ""
   };
 
   return { report: pdfReport, checks, defects };
@@ -140,7 +141,7 @@ router.post("/", optionalAuth, reportCreateLimiter, async (req, res) => {
     return res.status(400).json({ message: validationError });
   }
 
-  const { vehicleKey, checks, username } = req.body;
+  const { vehicleKey, checks, username, signatureDataUrl } = req.body;
   const vehicle = findVehicleByKey(vehicleKey);
   const resolvedUsername = resolveReportUsername(req.user, username);
   const resolvedUserId = resolveReportUserId(req.user);
@@ -180,6 +181,7 @@ router.post("/", optionalAuth, reportCreateLimiter, async (req, res) => {
       vehicleName: vehicle.name,
       checks: checksPayload,
       defects: defectsPayload,
+      signatureDataUrl,
       pdfFileName: null
     });
 
@@ -187,7 +189,8 @@ router.post("/", optionalAuth, reportCreateLimiter, async (req, res) => {
       report: {
         created_at: report.createdAt,
         vehicle_name: report.vehicleName,
-        username: report.username
+        username: report.username,
+        signature_data_url: report.signatureDataUrl || ""
       },
       checks: checksPayload.map((check) => ({
         item_label: check.itemLabel,

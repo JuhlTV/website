@@ -19,7 +19,10 @@ export default function ChecklistForm({ user, onReportCreated }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [signatureDataUrl, setSignatureDataUrl] = useState("");
   const successTimerRef = useRef(null);
+  const signatureCanvasRef = useRef(null);
+  const signatureDrawingRef = useRef(false);
 
   const defectCount = useMemo(
     () => checks.filter((c) => c.status === "defekt").length,
@@ -72,10 +75,97 @@ export default function ChecklistForm({ user, onReportCreated }) {
     updateCheck(index, { status: "defekt" });
   }
 
+  function getSignaturePoint(event) {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) {
+      return { x: 0, y: 0 };
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const touch = event.touches?.[0] || event.changedTouches?.[0];
+    const clientX = touch ? touch.clientX : event.clientX;
+    const clientY = touch ? touch.clientY : event.clientY;
+
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  }
+
+  function beginSignature(event) {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    event.preventDefault();
+    const context = canvas.getContext("2d");
+    const point = getSignaturePoint(event);
+
+    context.lineWidth = 2;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.strokeStyle = "#111111";
+    context.beginPath();
+    context.moveTo(point.x, point.y);
+
+    signatureDrawingRef.current = true;
+  }
+
+  function drawSignature(event) {
+    if (!signatureDrawingRef.current) {
+      return;
+    }
+
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    event.preventDefault();
+    const context = canvas.getContext("2d");
+    const point = getSignaturePoint(event);
+    context.lineTo(point.x, point.y);
+    context.stroke();
+  }
+
+  function endSignature(event) {
+    if (!signatureDrawingRef.current) {
+      return;
+    }
+
+    event.preventDefault();
+    signatureDrawingRef.current = false;
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    const context = canvas.getContext("2d");
+    context.closePath();
+    setSignatureDataUrl(canvas.toDataURL("image/png"));
+  }
+
+  function clearSignature() {
+    const canvas = signatureCanvasRef.current;
+    if (!canvas) {
+      return;
+    }
+
+    const context = canvas.getContext("2d");
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    setSignatureDataUrl("");
+  }
+
   async function submitChecklist(event) {
     event.preventDefault();
     setError("");
     setSuccess("");
+
+    if (!signatureDataUrl) {
+      setError("Bitte zuerst im Unterschriftenfeld unterschreiben.");
+      return;
+    }
 
     const invalidDefect = checks.find(
       (c) => c.status === "defekt" && (!c.defectDescription || c.defectDescription.trim().length < 3)
@@ -91,7 +181,8 @@ export default function ChecklistForm({ user, onReportCreated }) {
       const payload = {
         vehicleKey,
         username: user.username,
-        checks
+        checks,
+        signatureDataUrl
       };
 
       const data = await apiRequest("/reports", {
@@ -105,6 +196,7 @@ export default function ChecklistForm({ user, onReportCreated }) {
       if (selectedVehicle) {
         setChecks(initialChecksForVehicle(selectedVehicle));
       }
+      clearSignature();
       onReportCreated();
     } catch (err) {
       setError(err.message);
@@ -223,6 +315,33 @@ export default function ChecklistForm({ user, onReportCreated }) {
 
       {error ? <div className="error-box">{error}</div> : null}
       {success ? <div className="success-box">{success}</div> : null}
+
+      <div className="signature-block">
+        <div className="section-head" style={{ marginTop: "0.4rem" }}>
+          <h2>Unterschrift</h2>
+          <span className="badge">{signatureDataUrl ? "Erfasst" : "Pflichtfeld"}</span>
+        </div>
+
+        <canvas
+          ref={signatureCanvasRef}
+          className="signature-canvas"
+          width={560}
+          height={170}
+          onMouseDown={beginSignature}
+          onMouseMove={drawSignature}
+          onMouseUp={endSignature}
+          onMouseLeave={endSignature}
+          onTouchStart={beginSignature}
+          onTouchMove={drawSignature}
+          onTouchEnd={endSignature}
+        />
+
+        <div className="signature-actions">
+          <button type="button" className="btn-ghost" onClick={clearSignature}>
+            Unterschrift löschen
+          </button>
+        </div>
+      </div>
 
       <button type="submit" disabled={saving}>
         {saving

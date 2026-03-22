@@ -523,6 +523,36 @@ button:disabled {
   padding-bottom: 0.4rem;
 }
 
+/* ── Signature Pad ────────────────────────────────────────── */
+.signature-block {
+  margin-top: 0.9rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.7rem;
+}
+
+.signature-canvas {
+  width: 100%;
+  max-width: 560px;
+  height: 170px;
+  border: 2px dashed #b6b6b6;
+  border-radius: 4px;
+  background: #ffffff;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.app-root.dark .signature-canvas {
+  background: #171717;
+  border-color: #555555;
+}
+
+.signature-actions {
+  margin-top: 0.55rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 /* ── Alerts ───────────────────────────────────────────────── */
 .error-box,
 .success-box {

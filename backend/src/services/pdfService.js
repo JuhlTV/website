@@ -7,6 +7,20 @@ const PRIORITY_COLORS = {
   niedrig: "#177245"
 };
 
+function decodeSignatureDataUrl(signatureDataUrl) {
+  const raw = String(signatureDataUrl || "").trim();
+  const match = raw.match(/^data:image\/png;base64,(.+)$/);
+  if (!match) {
+    return null;
+  }
+
+  try {
+    return Buffer.from(match[1], "base64");
+  } catch {
+    return null;
+  }
+}
+
 export function buildReportPdf({ report, checks, defects }) {
   return new Promise((resolve, reject) => {
     try {
@@ -63,7 +77,37 @@ export function buildReportPdf({ report, checks, defects }) {
       doc.moveDown(2);
       doc.text("Unterschrift:");
       doc.moveDown(0.8);
-      doc.text("________________________________________");
+      const signatureBuffer = decodeSignatureDataUrl(report.signature_data_url);
+      if (signatureBuffer) {
+        const signatureBoxX = doc.x;
+        const signatureBoxY = doc.y;
+        const signatureBoxWidth = 260;
+        const signatureBoxHeight = 95;
+
+        doc
+          .rect(signatureBoxX, signatureBoxY, signatureBoxWidth, signatureBoxHeight)
+          .strokeColor("#999999")
+          .lineWidth(1)
+          .stroke();
+
+        try {
+          doc.image(signatureBuffer, signatureBoxX + 8, signatureBoxY + 8, {
+            fit: [signatureBoxWidth - 16, signatureBoxHeight - 16],
+            align: "left",
+            valign: "center"
+          });
+        } catch {
+          doc
+            .fontSize(10)
+            .fillColor("#555555")
+            .text("Signatur konnte nicht gerendert werden.", signatureBoxX + 10, signatureBoxY + 40)
+            .fillColor("#000000");
+        }
+
+        doc.y = signatureBoxY + signatureBoxHeight + 12;
+      } else {
+        doc.text("________________________________________");
+      }
 
       // Add page numbers to all pages.
       const totalPages = doc.bufferedPageRange().count;
