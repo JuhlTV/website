@@ -76,6 +76,38 @@ function canAccessReport(user, report) {
   return user.role === "geraetewart" || report.userId === user.id;
 }
 
+function resolveReportUsername(reqUser, payloadUsername) {
+  const tokenUsername = String(reqUser?.username || "").trim();
+  if (tokenUsername) {
+    return tokenUsername;
+  }
+
+  const fallback = String(payloadUsername || "").trim();
+  return fallback || "unbekannt";
+}
+
+function validateChecksAgainstVehicle(checks, vehicle) {
+  const vehicleChecklist = Array.isArray(vehicle?.checklist) ? vehicle.checklist : [];
+  const allowedKeys = new Set(vehicleChecklist.map((item) => item.key));
+  const seenKeys = new Set();
+
+  for (const check of checks) {
+    const key = String(check?.itemKey || "");
+
+    if (!allowedKeys.has(key)) {
+      return `Ungültiger Prüfpunktschlüssel: ${key || "(leer)"}`;
+    }
+
+    if (seenKeys.has(key)) {
+      return `Doppelter Prüfpunktschlüssel: ${key}`;
+    }
+
+    seenKeys.add(key);
+  }
+
+  return null;
+}
+
 router.post("/", requireAuth, async (req, res) => {
   const validationError = validateChecklistPayload(req.body);
   if (validationError) {
@@ -84,9 +116,15 @@ router.post("/", requireAuth, async (req, res) => {
 
   const { vehicleKey, checks, username } = req.body;
   const vehicle = findVehicleByKey(vehicleKey);
+  const resolvedUsername = resolveReportUsername(req.user, username);
 
   if (!vehicle) {
     return res.status(404).json({ message: "Fahrzeug nicht gefunden" });
+  }
+
+  const vehicleValidationError = validateChecksAgainstVehicle(checks, vehicle);
+  if (vehicleValidationError) {
+    return res.status(400).json({ message: vehicleValidationError });
   }
 
   try {
@@ -105,12 +143,12 @@ router.post("/", requireAuth, async (req, res) => {
         descriptionText: c.defectDescription,
         priority: c.defectPriority,
         timestamp: dayjs().toDate(),
-        username
+        username: resolvedUsername
       }));
 
     const report = await createReport({
       userId: req.user.id,
-      username,
+      username: resolvedUsername,
       vehicleKey: vehicle.key,
       vehicleName: vehicle.name,
       checks: checksPayload,
