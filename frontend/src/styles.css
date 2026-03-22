@@ -669,6 +669,18 @@ button:disabled {
   border-color: var(--ok);
 }
 
+.badge.defect-status.offen {
+  background: #fff5e8;
+  color: #8b4f00;
+  border-color: #d18a00;
+}
+
+.badge.defect-status.behoben {
+  background: #eaf6ef;
+  color: #145a32;
+  border-color: #1b7b49;
+}
+
 .app-root.dark .badge.priority-kritisch {
   background: rgba(193, 0, 31, 0.15);
   color: #ff6b6b;
@@ -682,6 +694,18 @@ button:disabled {
 .app-root.dark .badge.priority-niedrig {
   background: rgba(23, 114, 69, 0.12);
   color: #52c98a;
+}
+
+.app-root.dark .badge.defect-status.offen {
+  background: rgba(209, 138, 0, 0.13);
+  color: #f3be57;
+  border-color: #d18a00;
+}
+
+.app-root.dark .badge.defect-status.behoben {
+  background: rgba(23, 114, 69, 0.14);
+  color: #6ad7a0;
+  border-color: #2f9f68;
 }
 
 /* ── Loading ──────────────────────────────────────────────── */

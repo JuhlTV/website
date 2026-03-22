@@ -1,4 +1,5 @@
 import express from "express";
+import crypto from "crypto";
 import dayjs from "dayjs";
 import { optionalAuth, requireAuth, requireRole } from "../middleware/auth.js";
 import { createRateLimiter } from "../middleware/rateLimit.js";
@@ -36,6 +37,13 @@ const reportEmailLimiter = createRateLimiter({
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function getDefectId(reportId, defect) {
+  if (defect?.id) {
+    return defect.id;
+  }
+  return `${reportId}-${defect.itemKey}-${new Date(defect.timestamp).getTime()}`;
+}
+
 function normalizeRecipients(inputRecipients) {
   if (!Array.isArray(inputRecipients)) {
     return [];
@@ -60,7 +68,9 @@ function buildPdfPayloadFromReport(report) {
     description_text: defect.descriptionText,
     priority: defect.priority,
     timestamp: defect.timestamp,
-    username: defect.username
+    username: defect.username,
+    resolved_at: defect.resolvedAt || null,
+    resolved_by: defect.resolvedBy || null
   }));
 
   const pdfReport = {
@@ -166,12 +176,15 @@ router.post("/", optionalAuth, reportCreateLimiter, async (req, res) => {
     const defectsPayload = checks
       .filter((c) => c.status === "defekt")
       .map((c) => ({
+        id: crypto.randomUUID(),
         itemKey: c.itemKey,
         itemLabel: c.itemLabel,
         descriptionText: c.defectDescription,
         priority: c.defectPriority,
         timestamp: dayjs().toDate(),
-        username: resolvedUsername
+        username: resolvedUsername,
+        resolvedAt: null,
+        resolvedBy: null
       }));
 
     const report = await createReport({
@@ -202,7 +215,9 @@ router.post("/", optionalAuth, reportCreateLimiter, async (req, res) => {
         description_text: defect.descriptionText,
         priority: defect.priority,
         timestamp: defect.timestamp,
-        username: defect.username
+        username: defect.username,
+        resolved_at: defect.resolvedAt || null,
+        resolved_by: defect.resolvedBy || null
       }))
     });
 
@@ -237,10 +252,14 @@ router.get("/", requireAuth, requireRole("geraetewart"), async (req, res) => {
 });
 
 router.get("/defects", requireAuth, requireRole("geraetewart"), async (req, res) => {
-  const { priority, vehicleKey } = req.query;
+  const { priority, vehicleKey, status } = req.query;
 
   if (priority && !["niedrig", "mittel", "kritisch"].includes(String(priority))) {
     return res.status(400).json({ message: "Ungültige Priorität" });
+  }
+
+  if (status && !["alle", "offen", "behoben"].includes(String(status))) {
+    return res.status(400).json({ message: "Ungültiger Mängelstatus" });
   }
 
   try {
@@ -257,13 +276,23 @@ router.get("/defects", requireAuth, requireRole("geraetewart"), async (req, res)
           continue;
         }
 
+        const isResolved = Boolean(defect.resolvedAt);
+        if (status === "offen" && isResolved) {
+          continue;
+        }
+        if (status === "behoben" && !isResolved) {
+          continue;
+        }
+
         defects.push({
-          id: `${report.id}-${defect.itemKey}-${new Date(defect.timestamp).getTime()}`,
+          id: getDefectId(report.id, defect),
           item_label: defect.itemLabel,
           description_text: defect.descriptionText,
           priority: defect.priority,
           timestamp: defect.timestamp,
           username: defect.username,
+          resolved_at: defect.resolvedAt || null,
+          resolved_by: defect.resolvedBy || null,
           report_id: report.id,
           vehicle_key: report.vehicleKey,
           vehicle_name: report.vehicleName,
@@ -319,6 +348,65 @@ router.get("/history", requireAuth, requireRole("geraetewart"), async (req, res)
     return res.json({ history });
   } catch (error) {
     return res.status(500).json({ message: "Fehler beim Laden des Verlaufs", error: error.message });
+  }
+});
+
+router.patch("/defects/:defectId/resolve", requireAuth, requireRole("geraetewart"), async (req, res) => {
+  const defectId = String(req.params.defectId || "").trim();
+  const resolve = req.body?.resolve !== false;
+
+  if (!defectId) {
+    return res.status(400).json({ message: "Ungültige Mängel-ID" });
+  }
+
+  try {
+    const reports = await listReportsByUser(req.user);
+    for (const report of reports) {
+      const defects = Array.isArray(report.defects) ? report.defects : [];
+      const targetIndex = defects.findIndex((defect) => getDefectId(report.id, defect) === defectId);
+      if (targetIndex === -1) {
+        continue;
+      }
+
+      const nextDefects = defects.map((defect, index) => {
+        if (index !== targetIndex) {
+          return defect;
+        }
+
+        const stableId = getDefectId(report.id, defect);
+        if (!resolve) {
+          return {
+            ...defect,
+            id: stableId,
+            resolvedAt: null,
+            resolvedBy: null
+          };
+        }
+
+        return {
+          ...defect,
+          id: stableId,
+          resolvedAt: new Date().toISOString(),
+          resolvedBy: String(req.user?.username || "geraetewart")
+        };
+      });
+
+      await updateReport(report.id, {
+        defects: nextDefects,
+        // Regenerate PDF on next download to reflect defect status updates.
+        pdfFileName: null
+      });
+
+      return res.json({
+        message: resolve ? "Mangel als behoben markiert" : "Mangel wieder als offen markiert",
+        defectId,
+        resolve
+      });
+    }
+
+    return res.status(404).json({ message: "Mangel nicht gefunden" });
+  } catch (error) {
+    return res.status(500).json({ message: "Statusänderung fehlgeschlagen", error: error.message });
   }
 });
 

@@ -61,6 +61,9 @@ export function buildReportPdf({ report, checks, defects }) {
       } else {
         defects.forEach((d, index) => {
           const priorityColor = PRIORITY_COLORS[d.priority] || "#000000";
+          const resolvedLabel = d.resolved_at
+            ? `Behoben am ${dayjs(d.resolved_at).format("DD.MM.YYYY HH:mm")} (${d.resolved_by || "unbekannt"})`
+            : "Status: Offen";
           doc
             .fontSize(10)
             .fillColor(priorityColor)
@@ -70,6 +73,7 @@ export function buildReportPdf({ report, checks, defects }) {
             .text(`   Beschreibung: ${d.description_text}`)
             .text(`   Zeit: ${dayjs(d.timestamp).format("DD.MM.YYYY HH:mm")}`)
             .text(`   Erfasst von: ${d.username}`)
+            .text(`   ${resolvedLabel}`)
             .moveDown(0.4);
         });
       }

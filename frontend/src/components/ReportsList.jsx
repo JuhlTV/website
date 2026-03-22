@@ -8,6 +8,7 @@ export default function ReportsList({ user, refreshToken }) {
   const [defectSummary, setDefectSummary] = useState([]);
   const [history, setHistory] = useState([]);
   const [priorityFilter, setPriorityFilter] = useState("alle");
+  const [defectStatusFilter, setDefectStatusFilter] = useState("offen");
   const [defectVehicleFilter, setDefectVehicleFilter] = useState("alle");
   const [historyVehicleFilter, setHistoryVehicleFilter] = useState("alle");
   const [reportError, setReportError] = useState("");
@@ -15,6 +16,7 @@ export default function ReportsList({ user, refreshToken }) {
   const [historyError, setHistoryError] = useState("");
   const [loading, setLoading] = useState(true);
   const [emailTarget, setEmailTarget] = useState(null); // { reportId, input, sending, error }
+  const [resolvingDefectId, setResolvingDefectId] = useState("");
 
   useEffect(() => {
     async function loadVehicles() {
@@ -53,6 +55,9 @@ export default function ReportsList({ user, refreshToken }) {
         if (priorityFilter !== "alle") {
           params.set("priority", priorityFilter);
         }
+        if (defectStatusFilter !== "alle") {
+          params.set("status", defectStatusFilter);
+        }
         if (defectVehicleFilter !== "alle") {
           params.set("vehicleKey", defectVehicleFilter);
         }
@@ -67,7 +72,32 @@ export default function ReportsList({ user, refreshToken }) {
     }
 
     loadDefects();
-  }, [refreshToken, priorityFilter, defectVehicleFilter]);
+  }, [refreshToken, priorityFilter, defectStatusFilter, defectVehicleFilter]);
+
+  async function toggleDefectResolve(defect) {
+    const shouldResolve = !defect.resolved_at;
+    setResolvingDefectId(defect.id);
+    setDefectError("");
+    try {
+      await apiRequest(`/reports/defects/${encodeURIComponent(defect.id)}/resolve`, {
+        method: "PATCH",
+        body: JSON.stringify({ resolve: shouldResolve })
+      });
+
+      const params = new URLSearchParams();
+      if (priorityFilter !== "alle") params.set("priority", priorityFilter);
+      if (defectStatusFilter !== "alle") params.set("status", defectStatusFilter);
+      if (defectVehicleFilter !== "alle") params.set("vehicleKey", defectVehicleFilter);
+      const query = params.toString() ? `?${params.toString()}` : "";
+      const data = await apiRequest(`/reports/defects${query}`);
+      setDefects(data.defects || []);
+      setDefectSummary(data.summary || []);
+    } catch (err) {
+      setDefectError(err.message);
+    } finally {
+      setResolvingDefectId("");
+    }
+  }
 
   useEffect(() => {
     async function loadHistory() {
@@ -235,6 +265,19 @@ export default function ReportsList({ user, refreshToken }) {
           </label>
 
           <label>
+            Status
+            <select
+              name="defectStatusFilter"
+              value={defectStatusFilter}
+              onChange={(e) => setDefectStatusFilter(e.target.value)}
+            >
+              <option value="offen">Offen</option>
+              <option value="behoben">Behoben</option>
+              <option value="alle">Alle</option>
+            </select>
+          </label>
+
+          <label>
             Fahrzeug
             <select
               name="defectVehicleFilter"
@@ -273,7 +316,24 @@ export default function ReportsList({ user, refreshToken }) {
                 </p>
               </div>
               <div className="report-actions">
+                {defect.resolved_at ? (
+                  <span className="badge defect-status behoben">Behoben</span>
+                ) : (
+                  <span className="badge defect-status offen">Offen</span>
+                )}
                 <span className={`badge priority-${defect.priority}`}>{defect.priority}</span>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={resolvingDefectId === defect.id}
+                  onClick={() => toggleDefectResolve(defect)}
+                >
+                  {resolvingDefectId === defect.id
+                    ? "Speichere..."
+                    : defect.resolved_at
+                    ? "Wieder öffnen"
+                    : "Als behoben"}
+                </button>
                 <button type="button" onClick={() => downloadPdf(defect.report_id)}>
                   Bericht
                 </button>
