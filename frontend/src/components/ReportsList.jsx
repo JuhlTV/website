@@ -32,40 +32,76 @@ function loadStoredSavedFilters() {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed
+    const normalized = parsed
       .filter((item) => item && typeof item === "object")
       .map((item) => ({
         id: item.id || `${Date.now()}-${Math.random()}`,
         name: item.name || "Unbenannter Filter",
         priority: item.priority || DEFECT_FILTER_DEFAULTS.priority,
         status: item.status || DEFECT_FILTER_DEFAULTS.status,
-        vehicleKey: item.vehicleKey || DEFECT_FILTER_DEFAULTS.vehicleKey
+        vehicleKey: item.vehicleKey || DEFECT_FILTER_DEFAULTS.vehicleKey,
+        isFavorite: Boolean(item.isFavorite)
       }));
+
+    let favoriteAlreadySet = false;
+    return normalized.map((item) => {
+      if (item.isFavorite && !favoriteAlreadySet) {
+        favoriteAlreadySet = true;
+        return item;
+      }
+
+      return { ...item, isFavorite: false };
+    });
   } catch {
     return [];
   }
 }
 
+function loadInitialFilterSetup() {
+  const savedFilters = loadStoredSavedFilters();
+  const storedState = loadStoredFilterState();
+  const favoritePreset = savedFilters.find((item) => item.isFavorite);
+
+  return {
+    savedFilters,
+    priority: favoritePreset?.priority || storedState?.priority || DEFECT_FILTER_DEFAULTS.priority,
+    status: favoritePreset?.status || storedState?.status || DEFECT_FILTER_DEFAULTS.status,
+    vehicleKey: favoritePreset?.vehicleKey || storedState?.vehicleKey || DEFECT_FILTER_DEFAULTS.vehicleKey,
+    historyVehicleKey: storedState?.historyVehicleKey || "alle"
+  };
+}
+
+function isTypingTarget(element) {
+  if (!element) return false;
+  const tag = element.tagName;
+  return (
+    element.isContentEditable ||
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    tag === "SELECT"
+  );
+}
+
 export default function ReportsList({ user, refreshToken }) {
-  const initialFilterState = loadStoredFilterState();
+  const [initialFilterSetup] = useState(() => loadInitialFilterSetup());
   const [reports, setReports] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [defects, setDefects] = useState([]);
   const [defectSummary, setDefectSummary] = useState([]);
   const [history, setHistory] = useState([]);
   const [priorityFilter, setPriorityFilter] = useState(
-    initialFilterState?.priority || DEFECT_FILTER_DEFAULTS.priority
+    initialFilterSetup.priority
   );
   const [defectStatusFilter, setDefectStatusFilter] = useState(
-    initialFilterState?.status || DEFECT_FILTER_DEFAULTS.status
+    initialFilterSetup.status
   );
   const [defectVehicleFilter, setDefectVehicleFilter] = useState(
-    initialFilterState?.vehicleKey || DEFECT_FILTER_DEFAULTS.vehicleKey
+    initialFilterSetup.vehicleKey
   );
   const [historyVehicleFilter, setHistoryVehicleFilter] = useState(
-    initialFilterState?.historyVehicleKey || "alle"
+    initialFilterSetup.historyVehicleKey
   );
-  const [savedFilters, setSavedFilters] = useState(() => loadStoredSavedFilters());
+  const [savedFilters, setSavedFilters] = useState(initialFilterSetup.savedFilters);
   const [reportError, setReportError] = useState("");
   const [defectError, setDefectError] = useState("");
   const [historyError, setHistoryError] = useState("");
@@ -104,7 +140,8 @@ export default function ReportsList({ user, refreshToken }) {
       {
         id: `${Date.now()}-${Math.random()}`,
         name: trimmedName,
-        ...currentDefectFilters
+        ...currentDefectFilters,
+        isFavorite: false
       },
       ...savedFilters
     ].slice(0, 8);
@@ -112,9 +149,48 @@ export default function ReportsList({ user, refreshToken }) {
     setSavedFilters(next);
   }
 
+  function renameSavedFilterPreset(id) {
+    const target = savedFilters.find((item) => item.id === id);
+    if (!target) return;
+
+    const nextName = window.prompt("Neuen Namen für das Preset eingeben", target.name);
+    if (!nextName) return;
+
+    const trimmedName = nextName.trim();
+    if (!trimmedName) return;
+
+    setSavedFilters((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, name: trimmedName } : item))
+    );
+  }
+
+  function setFavoriteFilterPreset(id) {
+    setSavedFilters((prev) =>
+      prev.map((item) => ({
+        ...item,
+        isFavorite: item.id === id
+      }))
+    );
+  }
+
   function removeSavedFilterPreset(id) {
     setSavedFilters((prev) => prev.filter((item) => item.id !== id));
   }
+
+  useEffect(() => {
+    function onKeyDown(event) {
+      if (event.defaultPrevented) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if ((event.key || "").toLowerCase() !== "r") return;
+      if (isTypingTarget(document.activeElement)) return;
+
+      event.preventDefault();
+      resetAllFilters();
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     try {
@@ -531,6 +607,7 @@ export default function ReportsList({ user, refreshToken }) {
             Filter zurücksetzen
           </button>
         </div>
+        <p className="saved-filter-hint">Tastenkürzel: R setzt alle Filter sofort zurück.</p>
 
         <div className="inline-fields defect-filter-grid">
           <label>
@@ -602,7 +679,27 @@ export default function ReportsList({ user, refreshToken }) {
                       className={`btn-ghost saved-filter-load ${isActive ? "is-active" : ""}`}
                       onClick={() => applyDefectFilters(preset)}
                     >
-                      {preset.name}
+                      {preset.isFavorite ? `★ ${preset.name}` : preset.name}
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn-ghost saved-filter-action ${preset.isFavorite ? "is-favorite" : ""}`}
+                      onClick={() => setFavoriteFilterPreset(preset.id)}
+                      aria-label={
+                        preset.isFavorite
+                          ? `Preset ${preset.name} ist Standard`
+                          : `Preset ${preset.name} als Standard festlegen`
+                      }
+                    >
+                      {preset.isFavorite ? "Standard" : "Als Standard"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost saved-filter-action"
+                      onClick={() => renameSavedFilterPreset(preset.id)}
+                      aria-label={`Filter ${preset.name} umbenennen`}
+                    >
+                      Umbenennen
                     </button>
                     <button
                       type="button"

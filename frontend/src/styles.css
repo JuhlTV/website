@@ -865,6 +865,22 @@ button:disabled {
   border-color: rgba(193, 0, 31, 0.35) !important;
 }
 
+.saved-filter-action {
+  border: 0 !important;
+  border-right: 1px solid var(--border) !important;
+  color: var(--muted) !important;
+  padding: 0.3rem 0.45rem;
+  font-size: 0.71rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.saved-filter-action.is-favorite {
+  background: rgba(193, 0, 31, 0.16) !important;
+  color: #8b0000 !important;
+  font-weight: 700;
+}
+
 .saved-filter-delete {
   border: 0 !important;
   color: var(--muted) !important;
@@ -892,6 +908,16 @@ button:disabled {
   background: rgba(193, 0, 31, 0.22) !important;
   color: #ff9a9a !important;
   border-color: rgba(255, 107, 107, 0.45) !important;
+}
+
+.app-root.dark .saved-filter-action {
+  border-right-color: #484848 !important;
+  color: #cecece !important;
+}
+
+.app-root.dark .saved-filter-action.is-favorite {
+  background: rgba(193, 0, 31, 0.24) !important;
+  color: #ff9a9a !important;
 }
 
 .app-root.dark .saved-filter-delete {
@@ -1059,5 +1085,10 @@ button:disabled {
   .saved-filter-load {
     flex: 1;
     text-align: left;
+  }
+
+  .saved-filter-action,
+  .saved-filter-delete {
+    flex: 0 0 auto;
   }
 }
